@@ -12527,78 +12527,11 @@
   };
 
   const MAX_ROOM_PLAYERS = 4;
-  const PLAYER_SYNC_INTERVAL_MS = 85;      // ~11.7 пакетов/сек при движении (без нагрузки 60 FPS)
+  const PLAYER_SYNC_INTERVAL_MS = 85;        // ~11.7 пакетов/сек при движении (без нагрузки 60 FPS)
   const PLAYER_HEARTBEAT_INTERVAL_MS = 3500; // редкий heartbeat при стоянии на месте
-  const MONSTER_SYNC_INTERVAL_MS = 100;    // 10 пакетов/сек от HOST для монстров
-  const STALE_PLAYER_TIMEOUT_MS = 25000;   // защита от зависших сессий, если onDisconnect ещё в очереди
+  const MONSTER_SYNC_INTERVAL_MS = 100;      // 10 пакетов/сек от HOST для монстров
+  const STALE_PLAYER_TIMEOUT_MS = 25000;     // защита от зависших сессий, если onDisconnect ещё в очереди
   const MAX_STORED_EVENTS = 24;
-
-  // Уникальный идентификатор вкладки, чтобы при тесте в двух вкладках одного браузера
-  // (где Firebase Auth делит IndexedDB сессию) каждый экземпляр имел уникальный игровой UID
-  const TAB_INSTANCE_ID = (function() {
-    try {
-      let tid = sessionStorage.getItem('br_rtdb_tab_id');
-      if (!tid) {
-        const randArr = new Uint32Array(2);
-        if (window.crypto && window.crypto.getRandomValues) {
-          window.crypto.getRandomValues(randArr);
-          tid = (randArr[0] & 0xfffff).toString(36) + (randArr[1] & 0xfffff).toString(36);
-        } else {
-          tid = Date.now().toString(36).slice(-4) + Math.random().toString(36).substring(2, 6);
-        }
-        sessionStorage.setItem('br_rtdb_tab_id', tid);
-      }
-      return tid;
-    } catch (e) {
-      return 't' + Math.floor(1000 + Math.random() * 9000);
-    }
-  })();
-
-  function claimOrResolveUniquePlayerUid(baseAuthUid) {
-    const cleanBase = String(baseAuthUid || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 22) || ('u_' + TAB_INSTANCE_ID);
-    try {
-      const now = Date.now();
-      const rawLeases = localStorage.getItem('br_rtdb_uid_leases');
-      const leases = rawLeases ? JSON.parse(rawLeases) : {};
-      for (const k in leases) {
-        if (now - (leases[k].ts || 0) > 12000) delete leases[k];
-      }
-      let primaryTakenByOtherTab = false;
-      for (const k in leases) {
-        if (k !== TAB_INSTANCE_ID && leases[k] && leases[k].baseUid === cleanBase && leases[k].finalUid === cleanBase) {
-          primaryTakenByOtherTab = true;
-          break;
-        }
-      }
-      const finalUid = primaryTakenByOtherTab ? `${cleanBase}_${TAB_INSTANCE_ID}` : cleanBase;
-      leases[TAB_INSTANCE_ID] = { baseUid: cleanBase, finalUid, ts: now };
-      localStorage.setItem('br_rtdb_uid_leases', JSON.stringify(leases));
-      return finalUid;
-    } catch (e) {
-      return `${cleanBase}_${TAB_INSTANCE_ID}`;
-    }
-  }
-
-  function generateFallbackCryptographicUid() {
-    try {
-      let saved = sessionStorage.getItem('br_rtdb_fallback_uid');
-      if (saved && saved.length >= 8) return saved;
-      let uid = 'uid_';
-      if (window.crypto && window.crypto.randomUUID) {
-        uid += window.crypto.randomUUID().replace(/-/g, '').slice(0, 16);
-      } else if (window.crypto && window.crypto.getRandomValues) {
-        const arr = new Uint32Array(4);
-        window.crypto.getRandomValues(arr);
-        uid += Array.from(arr, n => n.toString(16)).join('').slice(0, 16);
-      } else {
-        uid += Date.now().toString(36) + Math.random().toString(36).substring(2, 10);
-      }
-      sessionStorage.setItem('br_rtdb_fallback_uid', uid);
-      return uid;
-    } catch (e) {
-      return 'uid_' + Date.now().toString(36);
-    }
-  }
 
   // 3D-бейдж с никнеймом над головой удалённого игрока в костюме Hazmat
   function createPlayerNameSprite(nameText, isHostFlag = false) {
@@ -12638,8 +12571,12 @@
     auth: null,
     db: null,
     uid: null,
-    authBaseUid: null,
+    isAuthenticated: false,
+    authInProgress: false,
+    authError: null,
     authReadyPromise: null,
+    isBusyAction: false,
+
     nickname: (function() {
       try {
         return localStorage.getItem('br_player_nick') || ('Stalker' + Math.floor(100 + Math.random() * 899));
@@ -12682,19 +12619,16 @@
 
     init() {
       this.bindInputsAndButtons();
-      this.initFirebaseSDK();
       this.updateStatusUI();
       this.renderRoomsList();
       this.renderLobbyUI();
+      this.initFirebaseSDK();
 
-      // Периодический цикл сетевой синхронизации (не в requestAnimationFrame!)
+      // Периодический цикл сетевой синхронизации (строго после авторизации Firebase Auth, не в requestAnimationFrame!)
       if (this.syncLoopInterval) clearInterval(this.syncLoopInterval);
       this.syncLoopInterval = setInterval(() => {
-        if (this.authBaseUid) {
-          this.uid = claimOrResolveUniquePlayerUid(this.authBaseUid);
-        }
         this.pruneDisconnectedPlayers();
-        if (this.currentRoomId && this.connected && this.uid) {
+        if (this.isAuthenticated && this.currentRoomId && this.connected && this.uid) {
           this.syncLocalPlayerToFirebase(false);
           if (this.isHost && this.roomState === 'playing') {
             this.syncMonstersToFirebase();
@@ -12707,10 +12641,11 @@
       window.addEventListener('beforeunload', () => this.handlePageUnload());
     },
 
-    initFirebaseSDK() {
+    async initFirebaseSDK() {
       try {
         if (typeof firebase === 'undefined') {
           this.showJoinError('Firebase SDK не загружен. Проверьте подключение к интернету.');
+          this.showLobbyError('Firebase SDK не загружен. Проверьте подключение к интернету.');
           return;
         }
         if (!firebase.apps || firebase.apps.length === 0) {
@@ -12721,83 +12656,208 @@
         this.auth = firebase.auth ? firebase.auth() : null;
         this.db = firebase.database ? firebase.database() : null;
 
+        if (!this.auth) {
+          const msg = 'Firebase Auth SDK недоступен. Авторизация невозможна.';
+          this.showJoinError(msg);
+          this.showLobbyError(msg);
+          return;
+        }
         if (!this.db) {
-          this.showJoinError('Firebase Realtime Database SDK недоступен.');
+          const msg = 'Firebase Realtime Database SDK недоступен.';
+          this.showJoinError(msg);
+          this.showLobbyError(msg);
           return;
         }
 
-        this.authReadyPromise = this.ensureAuthenticated();
+        // Подписываемся на изменения состояния авторизации Firebase, чтобы всегда держать актуальный auth.uid
+        this.auth.onAuthStateChanged((user) => {
+          if (user && user.uid) {
+            this.uid = user.uid;
+            this.isAuthenticated = true;
+            this.authError = null;
+            this.updateUidLabel();
+            this.updateStatusUI();
+          } else {
+            this.isAuthenticated = false;
+            this.uid = null;
+            this.updateUidLabel();
+            this.updateStatusUI();
+          }
+        });
+
+        // ОБЯЗАТЕЛЬНО дожидаемся успешного anonymous sign-in ДО подключения любых listeners и операций чтения/записи RTDB!
+        await this.ensureAuthenticated();
+
+        // Только после успешной авторизации подключаем системные слушатели и каталог комнат
         this.attachGlobalConnectionListeners();
         this.attachRoomsCatalogListener();
+        this.updateStatusUI();
       } catch (err) {
-        console.error('[BackroomsFirebase] Ошибка инициализации Firebase:', err);
-        this.showJoinError('Ошибка инициализации Firebase: ' + (err && err.message ? err.message : String(err)));
+        console.error('[BackroomsFirebase] Ошибка инициализации или авторизации Firebase:', err);
+        const errText = this.formatFirebaseError(err, 'Ошибка авторизации Firebase');
+        this.showJoinError(errText);
+        this.showLobbyError(errText);
+        this.updateStatusUI();
       }
     },
 
+    // Строгая авторизация через Firebase Anonymous Authentication до любой операции read/write Realtime Database.
+    // Гарантирует, что auth != null и this.uid === auth.currentUser.uid (никаких фейковых локальных UID!).
     ensureAuthenticated() {
-      if (this.uid) return Promise.resolve(this.uid);
-      if (!this.auth) {
-        const fbUid = generateFallbackCryptographicUid();
-        this.authBaseUid = fbUid;
-        this.uid = claimOrResolveUniquePlayerUid(fbUid);
+      if (this.isAuthenticated && this.auth && this.auth.currentUser && this.auth.currentUser.uid) {
+        this.uid = this.auth.currentUser.uid;
         this.updateUidLabel();
         return Promise.resolve(this.uid);
       }
 
-      return new Promise((resolve) => {
-        let settled = false;
-        const finishWithBase = (baseId) => {
-          if (settled) return;
-          settled = true;
-          this.authBaseUid = baseId;
-          this.uid = claimOrResolveUniquePlayerUid(baseId);
+      if (this.authReadyPromise) {
+        return this.authReadyPromise;
+      }
+
+      if (!this.auth) {
+        return Promise.reject(new Error('Firebase Authentication SDK не инициализирован.'));
+      }
+
+      this.authInProgress = true;
+      this.authError = null;
+      this.updateStatusUI();
+
+      this.authReadyPromise = (async () => {
+        try {
+          // Устанавливаем SESSION persistence, чтобы каждая вкладка браузера получала собственный
+          // серверный Firebase Auth UID (auth.uid) и не перезаписывала игрока другой вкладки
+          if (
+            firebase.auth &&
+            firebase.auth.Auth &&
+            firebase.auth.Auth.Persistence &&
+            firebase.auth.Auth.Persistence.SESSION &&
+            !this.auth.currentUser
+          ) {
+            try {
+              await this.auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+            } catch (persistErr) {
+              console.warn('[BackroomsFirebase] Не удалось установить SESSION persistence, используем стандартный режим:', persistErr);
+            }
+          }
+
+          let user = this.auth.currentUser;
+
+          if (!user) {
+            // Ожидаем первичное восстановление сессии (если есть), затем обязательно выполняем signInAnonymously()
+            user = await new Promise((resolve, reject) => {
+              let settled = false;
+              let unsub = null;
+              const stopListen = () => {
+                if (typeof unsub === 'function') {
+                  try { unsub(); } catch (e) {}
+                  unsub = null;
+                }
+              };
+
+              unsub = this.auth.onAuthStateChanged(
+                (u) => {
+                  if (settled) return;
+                  if (u && u.uid) {
+                    settled = true;
+                    stopListen();
+                    resolve(u);
+                  } else {
+                    // Сессии нет — выполняем обязательный вход через signInAnonymously()
+                    this.auth.signInAnonymously().then((cred) => {
+                      if (settled) return;
+                      if (cred && cred.user && cred.user.uid) {
+                        settled = true;
+                        stopListen();
+                        resolve(cred.user);
+                      }
+                    }).catch((signInErr) => {
+                      if (settled) return;
+                      settled = true;
+                      stopListen();
+                      reject(signInErr);
+                    });
+                  }
+                },
+                (authErr) => {
+                  if (settled) return;
+                  settled = true;
+                  stopListen();
+                  reject(authErr);
+                }
+              );
+            });
+          }
+
+          if (!user || !user.uid) {
+            const cred = await this.auth.signInAnonymously();
+            user = cred && cred.user ? cred.user : this.auth.currentUser;
+          }
+
+          if (!user || !user.uid) {
+            throw new Error('Firebase Auth не вернул действительный UID пользователя.');
+          }
+
+          // Обязательно запрашиваем актуальный ID-токен, чтобы WebSocket Realtime Database
+          // гарантированно получил токен авторизации перед первым чтением или записью
+          try {
+            await user.getIdToken();
+          } catch (tokenErr) {
+            console.warn('[BackroomsFirebase] Предупреждение при получении ID-токена:', tokenErr);
+          }
+
+          this.uid = user.uid;
+          this.isAuthenticated = true;
+          this.authInProgress = false;
+          this.authError = null;
           this.updateUidLabel();
-          resolve(this.uid);
-        };
-
-        const timeoutId = setTimeout(() => {
-          finishWithBase(generateFallbackCryptographicUid());
-        }, 4500);
-
-        this.auth.onAuthStateChanged((user) => {
-          if (user && user.uid) {
-            clearTimeout(timeoutId);
-            finishWithBase(user.uid);
-          }
-        });
-
-        if (this.auth.currentUser && this.auth.currentUser.uid) {
-          clearTimeout(timeoutId);
-          finishWithBase(this.auth.currentUser.uid);
-          return;
+          this.updateStatusUI();
+          return this.uid;
+        } catch (err) {
+          this.isAuthenticated = false;
+          this.authInProgress = false;
+          this.authError = err;
+          this.authReadyPromise = null;
+          this.updateUidLabel();
+          this.updateStatusUI();
+          throw err;
         }
+      })();
 
-        this.auth.signInAnonymously().then((cred) => {
-          clearTimeout(timeoutId);
-          if (cred && cred.user && cred.user.uid) {
-            finishWithBase(cred.user.uid);
-          } else {
-            finishWithBase(generateFallbackCryptographicUid());
-          }
-        }).catch(() => {
-          clearTimeout(timeoutId);
-          // Если Anonymous Auth отключён в консоли проекта, используем криптографический UID без блокировки мультиплеера
-          finishWithBase(generateFallbackCryptographicUid());
-        });
-      });
+      return this.authReadyPromise;
+    },
+
+    formatFirebaseError(err, prefix = 'Ошибка Firebase') {
+      const code = err && err.code ? String(err.code) : '';
+      const msg = err && err.message ? String(err.message) : String(err || 'Неизвестная ошибка');
+      if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
+        return `${prefix} (${code}): В проекте Firebase не включён Anonymous Sign-In. Откройте Firebase Console -> Authentication -> Sign-in method и включите провайдер «Anonymous».`;
+      }
+      if (code === 'PERMISSION_DENIED' || /permission_denied|permission denied/i.test(msg)) {
+        const authStateInfo = (this.isAuthenticated && this.uid)
+          ? `Авторизован (UID: ${this.uid.slice(0, 10)}…)`
+          : 'НЕ АВТОРИЗОВАН';
+        return `${prefix}: Отказано в доступе (Permission denied). Статус Auth: ${authStateInfo}. Проверьте, что правила Realtime Database разрешают запись авторизованным пользователям (auth != null) в ветку rooms.`;
+      }
+      return `${prefix}: ${code ? '[' + code + '] ' : ''}${msg}`;
     },
 
     updateUidLabel() {
       const uidLabel = document.getElementById('onlineUidJoinLabel');
-      if (uidLabel && this.uid) {
+      if (!uidLabel) return;
+      if (this.isAuthenticated && this.uid) {
         uidLabel.textContent = this.uid.length > 16 ? (this.uid.slice(0, 14) + '…') : this.uid;
-        uidLabel.title = this.uid;
+        uidLabel.title = `Firebase Auth UID: ${this.uid}`;
+      } else if (this.authInProgress) {
+        uidLabel.textContent = 'Авторизация...';
+        uidLabel.title = 'Выполняется вход в Firebase Anonymous Auth';
+      } else {
+        uidLabel.textContent = 'Нет авторизации';
+        uidLabel.title = 'Ожидание авторизации Firebase';
       }
     },
 
     attachGlobalConnectionListeners() {
-      if (!this.db) return;
+      if (!this.db || !this.isAuthenticated) return;
       this.detachListenersList(this.globalListeners);
 
       const connectedRef = this.db.ref('.info/connected');
@@ -12810,7 +12870,7 @@
           this.wasConnectedOnce = true;
           this.reconnecting = false;
           this.estimatedPingMs = Math.max(18, Math.min(240, Math.round(performance.now() - pingStart + 28)));
-          if (this.currentRoomId && this.uid) {
+          if (this.currentRoomId && this.isAuthenticated && this.uid) {
             this.handleRoomReconnect();
           }
         } else {
@@ -12853,7 +12913,9 @@
     },
 
     attachRoomsCatalogListener() {
-      if (!this.db) return;
+      // Подключаем слушатель списка комнат ТОЛЬКО после успешной авторизации Firebase Auth
+      if (!this.db || !this.isAuthenticated || !this.uid) return;
+
       const roomsRef = this.db.ref('rooms').orderByChild('meta/updatedAt').limitToLast(20);
       const onRoomsValue = (snap) => {
         this.roomsCatalog.clear();
@@ -12886,12 +12948,17 @@
         }
         this.renderRoomsList();
       };
-      roomsRef.on('value', onRoomsValue);
+      const onRoomsError = (err) => {
+        console.warn('[BackroomsFirebase] Чтение общего списка rooms ограничено правилами безопасности (вход возможен по коду комнаты):', err && err.message ? err.message : err);
+        this.renderRoomsList();
+      };
+      roomsRef.on('value', onRoomsValue, onRoomsError);
       this.globalListeners.push({ ref: roomsRef, eventType: 'value', handler: onRoomsValue });
     },
 
-    // Генерация уникального Room ID с использованием криптографической энтропии и ключа Firebase push()
+    // Генерация уникального Room ID после успешной авторизации Firebase
     async generateUniqueRoomId() {
+      await this.ensureAuthenticated();
       for (let attempt = 0; attempt < 6; attempt++) {
         const pushKey = this.db.ref('rooms').push().key || '';
         let hashNum = 0;
@@ -12905,8 +12972,15 @@
         }
         const fourDigits = 1000 + (hashNum % 9000);
         const candidateCode = `BR-${fourDigits}`;
-        const snap = await this.db.ref(`rooms/${candidateCode}/meta`).get();
-        if (!snap.exists() || snap.val()?.deleted) {
+        if (this.roomsCatalog.has(candidateCode)) continue;
+
+        try {
+          const snap = await this.db.ref(`rooms/${candidateCode}/meta`).get();
+          if (!snap.exists() || snap.val()?.deleted) {
+            return candidateCode;
+          }
+        } catch (readErr) {
+          // Если Security Rules запрещают чтение несуществующей ветки до её создания, используем сгенерированный крипто-код
           return candidateCode;
         }
       }
@@ -12995,14 +13069,59 @@
       };
     },
 
-    async createRoom() {
-      this.hideErrors();
+    setButtonsBusyState(busy, labelText = null) {
+      this.isBusyAction = busy;
+      const createBtn = document.getElementById('btnCreateRoomAction');
+      const joinBtn = document.getElementById('btnJoinByCode');
+      if (createBtn) {
+        createBtn.disabled = busy;
+        createBtn.style.opacity = busy ? '0.6' : '1';
+        createBtn.textContent = busy && labelText ? labelText : '[ СОЗДАТЬ КОМНАТУ ]';
+      }
+      if (joinBtn) {
+        joinBtn.disabled = busy;
+        joinBtn.style.opacity = busy ? '0.6' : '1';
+        joinBtn.textContent = busy && labelText ? labelText : '[ ПОДКЛЮЧИТЬСЯ ]';
+      }
+    },
+
+    async writeNewRoomToDatabase(roomCode, roomData, initialPlayer) {
+      const roomRef = this.db.ref(`rooms/${roomCode}`);
       try {
-        await this.ensureAuthenticated();
-        if (!this.db) {
-          this.showLobbyError('Firebase Realtime Database недоступна.');
-          return;
+        // Сначала пробуем атомарную запись комнаты целиком
+        await roomRef.set(roomData);
+      } catch (err) {
+        // Если в Security Rules права .write заданы раздельно на дочерних узлах (meta, host, players/$uid, gameState),
+        // выполняем последовательную запись начиная с meta (где фиксируется hostUid === auth.uid)
+        const isPermErr = err && (err.code === 'PERMISSION_DENIED' || /permission_denied|permission denied/i.test(String(err.message || err)));
+        if (!isPermErr) throw err;
+        await roomRef.child('meta').set(roomData.meta);
+        await roomRef.child('host').set(roomData.host);
+        await roomRef.child(`players/${this.uid}`).set(initialPlayer);
+        await roomRef.child('gameState').set(roomData.gameState);
+      }
+    },
+
+    async createRoom() {
+      if (this.isBusyAction) return;
+      this.hideErrors();
+      this.setButtonsBusyState(true, '[ АВТОРИЗАЦИЯ... ]');
+
+      try {
+        // 1. Строго дожидаемся завершения анонимной авторизации Firebase Auth перед любой операцией с БД
+        const authedUid = await this.ensureAuthenticated();
+        if (!this.isAuthenticated || !this.auth || !this.auth.currentUser || !authedUid) {
+          throw new Error('Не удалось подтвердить авторизацию Firebase (auth.currentUser отсутствует).');
         }
+        // Гарантируем 100% совпадение this.uid с auth.currentUser.uid для правил безопасности ($uid === auth.uid)
+        this.uid = this.auth.currentUser.uid;
+
+        if (!this.db) {
+          throw new Error('Firebase Realtime Database недоступна.');
+        }
+
+        this.setButtonsBusyState(true, '[ СОЗДАНИЕ... ]');
+
         if (this.currentRoomId) {
           await this.leaveRoom(true);
         }
@@ -13046,7 +13165,7 @@
           gameState: this.buildInitialGameState(startLvl)
         };
 
-        await this.db.ref(`rooms/${roomCode}`).set(roomData);
+        await this.writeNewRoomToDatabase(roomCode, roomData, initialPlayer);
 
         this.roomPlayersMeta.set(this.uid, {
           ...initialPlayer,
@@ -13059,12 +13178,22 @@
         this.updateStatusUI();
         if (typeof sound !== 'undefined') sound.playUiBeep(640, 0.06);
       } catch (err) {
+        this.currentRoomId = null;
+        this.isHost = false;
+        this.hostUid = null;
+        this.hostName = '—';
         console.error('[BackroomsFirebase] Ошибка создания комнаты:', err);
-        this.showLobbyError('Не удалось создать комнату: ' + (err && err.message ? err.message : String(err)));
+        const formatted = this.formatFirebaseError(err, 'Не удалось создать комнату');
+        this.showLobbyError(formatted);
+        this.showJoinError(formatted);
+        this.renderLobbyUI();
+      } finally {
+        this.setButtonsBusyState(false);
       }
     },
 
     async joinRoomByCode(rawCode) {
+      if (this.isBusyAction) return;
       this.hideErrors();
       if (!rawCode || !String(rawCode).trim()) {
         this.showJoinError('Введите код комнаты (например: BR-4821).');
@@ -13078,32 +13207,59 @@
         return;
       }
 
+      this.setButtonsBusyState(true, '[ АВТОРИЗАЦИЯ... ]');
+
       try {
-        await this.ensureAuthenticated();
+        // 1. Строго дожидаемся завершения анонимной авторизации Firebase Auth перед чтением комнаты и записью игрока
+        const authedUid = await this.ensureAuthenticated();
+        if (!this.isAuthenticated || !this.auth || !this.auth.currentUser || !authedUid) {
+          throw new Error('Не удалось подтвердить авторизацию Firebase (auth.currentUser отсутствует).');
+        }
+        this.uid = this.auth.currentUser.uid;
+
         if (!this.db) {
-          this.showJoinError('Firebase Realtime Database недоступна.');
-          return;
+          throw new Error('Firebase Realtime Database недоступна.');
         }
         if (!this.connected && !navigator.onLine) {
           this.showJoinError('Нет соединения с Firebase. Проверьте подключение к интернету.');
           return;
         }
 
+        this.setButtonsBusyState(true, '[ ВХОД... ]');
+
         const roomRef = this.db.ref(`rooms/${code}`);
-        const roomSnap = await roomRef.get();
-        if (!roomSnap.exists()) {
-          this.showJoinError(`Комната ${code} не существует.`);
-          return;
+        let roomVal = null;
+        let meta = null;
+        let playersObj = {};
+
+        try {
+          const roomSnap = await roomRef.get();
+          if (!roomSnap.exists()) {
+            this.showJoinError(`Комната ${code} не существует.`);
+            return;
+          }
+          roomVal = roomSnap.val();
+          meta = roomVal && roomVal.meta ? roomVal.meta : null;
+          playersObj = (roomVal && roomVal.players) ? roomVal.players : {};
+        } catch (readErr) {
+          // Если чтение корня комнаты ограничено, пробуем прочитать meta и players отдельно
+          const metaSnap = await roomRef.child('meta').get();
+          if (!metaSnap.exists()) {
+            this.showJoinError(`Комната ${code} не существует.`);
+            return;
+          }
+          meta = metaSnap.val();
+          try {
+            const pSnap = await roomRef.child('players').get();
+            if (pSnap.exists()) playersObj = pSnap.val() || {};
+          } catch (e) {}
         }
 
-        const roomVal = roomSnap.val();
-        if (!roomVal || !roomVal.meta || roomVal.meta.deleted) {
+        if (!meta || meta.deleted) {
           this.showJoinError(`Комната ${code} уже закрыта или недоступна.`);
           return;
         }
 
-        const meta = roomVal.meta;
-        const playersObj = roomVal.players || {};
         const now = this.getServerNowMs();
         const activeUids = Object.keys(playersObj).filter((uidKey) => {
           const p = playersObj[uidKey];
@@ -13136,7 +13292,8 @@
         initialPlayer.isHost = this.isHost;
 
         await this.db.ref(`rooms/${code}/players/${this.uid}`).set(initialPlayer);
-        await this.db.ref(`rooms/${code}/meta/updatedAt`).set(firebase.database.ServerValue.TIMESTAMP);
+        // Обновляем updatedAt в meta (игнорируем отказ, если по правилам Security Rules менять meta может только hostUid)
+        this.db.ref(`rooms/${code}/meta/updatedAt`).set(firebase.database.ServerValue.TIMESTAMP).catch(() => {});
 
         this.roomPlayersMeta.set(this.uid, {
           ...initialPlayer,
@@ -13146,7 +13303,7 @@
         this.setupOnDisconnectHandlers(code);
         this.attachRoomListeners(code);
 
-        if (roomVal.gameState) {
+        if (roomVal && roomVal.gameState) {
           this.applyRoomGameState(roomVal.gameState);
         }
 
@@ -13160,12 +13317,16 @@
         }
       } catch (err) {
         console.error('[BackroomsFirebase] Ошибка входа в комнату:', err);
-        this.showJoinError('Ошибка подключения к комнате: ' + (err && err.message ? err.message : String(err)));
+        const formatted = this.formatFirebaseError(err, 'Ошибка подключения к комнате');
+        this.showJoinError(formatted);
+        this.showLobbyError(formatted);
+      } finally {
+        this.setButtonsBusyState(false);
       }
     },
 
     setupOnDisconnectHandlers(roomCode) {
-      if (!this.db || !roomCode || !this.uid) return;
+      if (!this.db || !roomCode || !this.isAuthenticated || !this.uid) return;
       this.cancelOnDisconnectHandlers();
 
       try {
@@ -13194,9 +13355,10 @@
     },
 
     async handleRoomReconnect() {
-      if (!this.db || !this.currentRoomId || !this.uid) return;
+      if (!this.db || !this.currentRoomId || !this.isAuthenticated || !this.uid) return;
       const code = this.currentRoomId;
       try {
+        await this.ensureAuthenticated();
         this.setupOnDisconnectHandlers(code);
         const pPayload = this.buildLocalPlayerPayload();
         this.lastSentSnapshot = null;
@@ -13231,11 +13393,14 @@
     },
 
     attachRoomListeners(roomCode) {
-      if (!this.db || !roomCode) return;
+      if (!this.db || !roomCode || !this.isAuthenticated || !this.uid) return;
       // Гарантированно удаляем старые listeners перед навешиванием новых (никаких duplicate listeners!)
       this.detachRoomListeners();
 
       const roomBaseRef = this.db.ref(`rooms/${roomCode}`);
+      const onListenerError = (contextName) => (err) => {
+        console.warn(`[BackroomsFirebase] Ошибка чтения ветки ${contextName}:`, err && err.message ? err.message : err);
+      };
 
       // 1. Слушатель метаданных комнаты (meta)
       const metaRef = roomBaseRef.child('meta');
@@ -13271,7 +13436,7 @@
         this.renderLobbyUI();
         this.updateStatusUI();
       };
-      metaRef.on('value', onMetaValue);
+      metaRef.on('value', onMetaValue, onListenerError('meta'));
       this.roomListeners.push({ ref: metaRef, eventType: 'value', handler: onMetaValue });
 
       // 2. Слушатели игроков в комнате (onChildAdded, onChildChanged, onChildRemoved)
@@ -13316,9 +13481,9 @@
         this.updateStatusUI();
       };
 
-      playersRef.on('child_added', handlePlayerSnap);
-      playersRef.on('child_changed', handlePlayerSnap);
-      playersRef.on('child_removed', handlePlayerRemoved);
+      playersRef.on('child_added', handlePlayerSnap, onListenerError('players:child_added'));
+      playersRef.on('child_changed', handlePlayerSnap, onListenerError('players:child_changed'));
+      playersRef.on('child_removed', handlePlayerRemoved, onListenerError('players:child_removed'));
       this.roomListeners.push(
         { ref: playersRef, eventType: 'child_added', handler: handlePlayerSnap },
         { ref: playersRef, eventType: 'child_changed', handler: handlePlayerSnap },
@@ -13331,7 +13496,7 @@
         if (!snap.exists()) return;
         this.applyRoomGameState(snap.val());
       };
-      gameStateRef.on('value', onGameStateValue);
+      gameStateRef.on('value', onGameStateValue, onListenerError('gameState'));
       this.roomListeners.push({ ref: gameStateRef, eventType: 'value', handler: onGameStateValue });
 
       // 4. Слушатель состояния монстров от HOST (monsters)
@@ -13343,7 +13508,7 @@
           this.syncedMonsters = mVal;
         }
       };
-      monstersRef.on('value', onMonstersValue);
+      monstersRef.on('value', onMonstersValue, onListenerError('monsters'));
       this.roomListeners.push({ ref: monstersRef, eventType: 'value', handler: onMonstersValue });
 
       // 5. Слушатель одноразовых игровых событий (events)
@@ -13361,13 +13526,13 @@
         if (evData.senderUid === this.uid) return;
         this.applyIncomingGameEvent(evData.type, evData.payload || {});
       };
-      eventsRef.on('child_added', onEventAdded);
+      eventsRef.on('child_added', onEventAdded, onListenerError('events'));
       this.roomListeners.push({ ref: eventsRef, eventType: 'child_added', handler: onEventAdded });
     },
 
     // Автоматическая передача прав HOST, если создатель комнаты отключился
     checkHostFailover() {
-      if (!this.currentRoomId || !this.db || !this.uid) return;
+      if (!this.currentRoomId || !this.db || !this.isAuthenticated || !this.uid) return;
       if (this.hostUid && this.roomPlayersMeta.has(this.hostUid)) {
         const hMeta = this.roomPlayersMeta.get(this.hostUid);
         if (hMeta && hMeta.connected !== false) return;
@@ -13421,7 +13586,7 @@
       this.roomPlayersMeta.clear();
       this.processedEventIds.clear();
 
-      if (oldCode && this.db && this.uid) {
+      if (oldCode && this.db && this.isAuthenticated && this.uid) {
         try {
           await this.db.ref(`rooms/${oldCode}/players/${this.uid}`).remove();
           if (wasHost && remainingPlayersCount === 0) {
@@ -13447,7 +13612,7 @@
     },
 
     handlePageUnload() {
-      if (!this.currentRoomId || !this.db || !this.uid) return;
+      if (!this.currentRoomId || !this.db || !this.isAuthenticated || !this.uid) return;
       try {
         this.db.ref(`rooms/${this.currentRoomId}/players/${this.uid}`).remove();
       } catch (e) {}
@@ -13462,7 +13627,7 @@
       if (joinNickInput && document.activeElement !== joinNickInput) joinNickInput.value = clean;
       if (hostNickInput && document.activeElement !== hostNickInput) hostNickInput.value = clean;
 
-      if (this.currentRoomId && this.db && this.uid) {
+      if (this.currentRoomId && this.db && this.isAuthenticated && this.uid) {
         this.db.ref(`rooms/${this.currentRoomId}/players/${this.uid}/nickname`).set(clean).catch(() => {});
         if (this.isHost) {
           this.hostName = clean;
@@ -13474,7 +13639,7 @@
 
     // Оптимизированная отправка состояния локального игрока (только при реальном изменении или редком heartbeat)
     syncLocalPlayerToFirebase(force = false) {
-      if (!this.currentRoomId || !this.db || !this.uid || !this.connected) return;
+      if (!this.currentRoomId || !this.db || !this.isAuthenticated || !this.uid || !this.connected) return;
       const now = performance.now();
       if (!force && now - this.lastPlayerWriteMs < PLAYER_SYNC_INTERVAL_MS) return;
 
@@ -13519,7 +13684,7 @@
 
     onLocalLevelChanged(newLevel) {
       const lvl = Number(newLevel) || 0;
-      if (!this.currentRoomId || !this.db || !this.uid) return;
+      if (!this.currentRoomId || !this.db || !this.isAuthenticated || !this.uid) return;
       this.syncLocalPlayerToFirebase(true);
       if (this.isHost) {
         this.lobbyLevel = lvl;
@@ -13759,7 +13924,7 @@
     },
 
     syncMonstersToFirebase() {
-      if (!this.currentRoomId || !this.isHost || !this.db || !this.connected) return;
+      if (!this.currentRoomId || !this.isHost || !this.db || !this.isAuthenticated || !this.uid || !this.connected) return;
       const now = performance.now();
       if (now - this.lastMonsterWriteMs < MONSTER_SYNC_INTERVAL_MS) return;
       this.lastMonsterWriteMs = now;
@@ -13793,7 +13958,7 @@
 
     // СИНХРОНИЗАЦИЯ ВАЖНЫХ ИГРОВЫХ СОБЫТИЙ (EVENTS) И СОСТОЯНИЯ МИРА (GAMESTATE)
     emitGameEvent(type, payload = {}) {
-      if (!this.currentRoomId || !this.db || !this.uid) return;
+      if (!this.currentRoomId || !this.db || !this.isAuthenticated || !this.uid) return;
       const roomRef = this.db.ref(`rooms/${this.currentRoomId}`);
       const gsRef = roomRef.child('gameState');
 
@@ -13834,12 +13999,16 @@
       } else if (type === 'elevator_close' && typeof payload.nextLevel === 'number') {
         const nextLvl = payload.nextLevel;
         gsRef.update({ currentLevel: nextLvl, updatedAt: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
-        roomRef.child('meta').update({ level: nextLvl, updatedAt: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
+        if (this.isHost) {
+          roomRef.child('meta').update({ level: nextLvl, updatedAt: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
+        }
       } else if (type === 'l1_hermetic_open') {
         gsRef.update({ l1HermeticOpen: true, updatedAt: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
       } else if (type === 'l1_to_l2_transition') {
         gsRef.update({ currentLevel: 2, updatedAt: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
-        roomRef.child('meta').update({ level: 2, updatedAt: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
+        if (this.isHost) {
+          roomRef.child('meta').update({ level: 2, updatedAt: firebase.database.ServerValue.TIMESTAMP }).catch(() => {});
+        }
       } else if (type === 'l2_valve_turn' && payload.valveKey) {
         const vKey = payload.valveKey.replace('END_VALVE_', '');
         gsRef.child(`l2Valves/${vKey}`).set(Number(payload.angleDeg) || 0).catch(() => {});
@@ -14105,6 +14274,13 @@
 
     async startMatchFromLobby() {
       this.hideErrors();
+      try {
+        await this.ensureAuthenticated();
+      } catch (err) {
+        this.showLobbyError(this.formatFirebaseError(err, 'Ошибка авторизации'));
+        return;
+      }
+
       if (!this.currentRoomId) {
         await this.createRoom();
       }
@@ -14116,7 +14292,7 @@
       }
 
       this.roomState = 'playing';
-      if (this.isHost && this.db) {
+      if (this.isHost && this.db && this.isAuthenticated) {
         try {
           await this.db.ref(`rooms/${this.currentRoomId}/meta`).update({
             status: 'playing',
@@ -14155,11 +14331,23 @@
     },
 
     updateStatusUI() {
-      const isOnline = Boolean(this.connected && navigator.onLine);
-      const statusText = isOnline
-        ? '🟢 FIREBASE ONLINE'
-        : (this.reconnecting ? '🟡 Подключение...' : '🟡 CONNECTING');
-      const statusClass = isOnline ? 'font-bold text-emerald-300' : 'font-bold text-amber-300';
+      const isOnline = Boolean(this.isAuthenticated && this.connected && navigator.onLine);
+      let statusText = '🟡 CONNECTING';
+      let statusClass = 'font-bold text-amber-300';
+
+      if (this.authError) {
+        statusText = '🔴 AUTH ERROR';
+        statusClass = 'font-bold text-red-400';
+      } else if (this.authInProgress || !this.isAuthenticated) {
+        statusText = '🟡 АВТОРИЗАЦИЯ...';
+        statusClass = 'font-bold text-amber-300';
+      } else if (isOnline) {
+        statusText = '🟢 FIREBASE ONLINE';
+        statusClass = 'font-bold text-emerald-300';
+      } else if (this.reconnecting) {
+        statusText = '🟡 Подключение...';
+        statusClass = 'font-bold text-amber-300';
+      }
 
       const fbSt = document.getElementById('fbConnectionStatus');
       if (fbSt) { fbSt.textContent = statusText; fbSt.className = statusClass; }
@@ -14168,7 +14356,11 @@
       if (lobbySt) { lobbySt.textContent = statusText; lobbySt.className = statusClass; }
 
       const pingLabel = document.getElementById('onlinePingJoinLabel');
-      if (pingLabel) pingLabel.textContent = isOnline ? `${this.estimatedPingMs} ms` : 'Подключение...';
+      if (pingLabel) {
+        pingLabel.textContent = isOnline
+          ? `${this.estimatedPingMs} ms`
+          : (this.authInProgress ? 'Auth...' : 'Подключение...');
+      }
 
       const hudBadge = document.getElementById('hudOnlineBadge');
       const hudDot = document.getElementById('hudOnlineDot');
@@ -14202,6 +14394,11 @@
     renderRoomsList() {
       const listEl = document.getElementById('firebaseRoomsList');
       if (!listEl) return;
+
+      if (!this.isAuthenticated) {
+        listEl.innerHTML = `<div class="crt-box text-[11px] text-blue-200/75">${this.authError ? 'Ошибка авторизации Firebase. Проверьте настройки Anonymous Auth.' : 'Ожидание авторизации Firebase Anonymous Auth...'}</div>`;
+        return;
+      }
 
       const activeRooms = Array.from(this.roomsCatalog.values())
         .sort((a, b) => (b.updatedAtMs || 0) - (a.updatedAtMs || 0));
@@ -14362,14 +14559,17 @@
       document.getElementById('inputJoinRoomCode')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') this.joinRoomByCode(e.target.value);
       });
-      document.getElementById('btnRefreshRoomsList')?.addEventListener('click', () => {
-        if (this.db) {
-          this.db.ref('rooms').orderByChild('meta/updatedAt').limitToLast(20).get().then(() => {
-            this.renderRoomsList();
-          }).catch(() => this.renderRoomsList());
-        } else {
-          this.renderRoomsList();
+      document.getElementById('btnRefreshRoomsList')?.addEventListener('click', async () => {
+        this.hideErrors();
+        try {
+          await this.ensureAuthenticated();
+          if (this.db && this.isAuthenticated) {
+            await this.db.ref('rooms').orderByChild('meta/updatedAt').limitToLast(20).get();
+          }
+        } catch (err) {
+          console.warn('[BackroomsFirebase] Обновление списка комнат:', err && err.message ? err.message : err);
         }
+        this.renderRoomsList();
       });
       document.getElementById('btnLeaveRoomAction')?.addEventListener('click', () => this.leaveRoom(false));
       document.getElementById('btnCopyRoomCode')?.addEventListener('click', () => this.copyRoomCodeToClipboard());
@@ -14379,7 +14579,7 @@
           return;
         }
         this.lobbyLevel = (this.lobbyLevel + 1) % 3;
-        if (this.currentRoomId && this.isHost && this.db) {
+        if (this.currentRoomId && this.isHost && this.db && this.isAuthenticated) {
           this.db.ref(`rooms/${this.currentRoomId}/meta`).update({
             level: this.lobbyLevel,
             updatedAt: firebase.database.ServerValue.TIMESTAMP
