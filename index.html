@@ -923,6 +923,9 @@
         <div id="hudReconnectBanner" class="hidden items-center gap-1.5 border-l border-amber-400/40 pl-2 text-[10px] sm:text-xs text-amber-300 font-bold animate-pulse">
           <span>🔄</span><span id="hudReconnectText">Подключение...</span>
         </div>
+        <button id="hudSpectatorRespawnBtn" type="button" class="hidden ctrl-btn px-2 py-0.5 sm:px-2.5 sm:py-1 rounded text-[10px] sm:text-xs font-bold tracking-wider text-emerald-300 border-emerald-400/60 items-center gap-1 animate-pulse">
+          <span>↻</span><span>ВОЗРОДИТЬСЯ [ENTER]</span>
+        </button>
       </div>
 
       <!-- Справа сверху: только Вид, VHS, Звук и Полный экран -->
@@ -3080,13 +3083,189 @@
     }
 
     let postJumpscareMenuTimeout = null;
+    let isPlayerDead = false;
+    let isSpectatingMonster = false;
+    let respawnGraceTimer = 0;
+    let bacteriaTargetUid = null;
+
+    function updateSpectatorHudUI() {
+      const specBtn = document.getElementById('hudSpectatorRespawnBtn');
+      if (!specBtn) return;
+      if (isPlayerDead && isSpectatingMonster && !menuOpen) {
+        specBtn.classList.remove('hidden');
+        specBtn.classList.add('flex');
+      } else {
+        specBtn.classList.add('hidden');
+        specBtn.classList.remove('flex');
+      }
+    }
+
+    // Возвращает список всех живых, не спрятавшихся целей на указанном уровне (локальный игрок + онлайн-игроки)
+    function getValidPlayerTargetsOnLevel(levelNum) {
+      const targets = [];
+      const localAlive = !isPlayerDead && !isJumpscareActive && !isPlayerHiddenFromMonster && respawnGraceTimer <= 0 && currentLevel === levelNum;
+      if (localAlive) {
+        const localFast = isSprinting || (!isCrouching && (keys.w || keys.s || keys.a || keys.d || Math.hypot(joyVec.x, joyVec.y) > 0.4));
+        targets.push({
+          uid: (window.BackroomsOnlineManager && window.BackroomsOnlineManager.uid) || 'local',
+          isLocal: true,
+          x: playerPos.x,
+          z: playerPos.z,
+          crouching: isCrouching,
+          sprinting: isSprinting,
+          isFast: localFast
+        });
+      }
+      if (window.BackroomsOnlineManager && window.BackroomsOnlineManager.currentRoomId) {
+        window.BackroomsOnlineManager.remotePlayers.forEach((rp, uidKey) => {
+          if (rp && rp.alive && !rp.hidden && rp.level === levelNum) {
+            const rSpeed = Math.hypot(rp.velocity?.x || 0, rp.velocity?.z || 0);
+            const rFast = Boolean(rp.sprinting || rp.animMode === 'run' || (!rp.crouching && (rp.animMode === 'walk' || rSpeed > 0.5)));
+            targets.push({
+              uid: uidKey,
+              isLocal: false,
+              x: rp.currentPos.x,
+              z: rp.currentPos.z,
+              crouching: Boolean(rp.crouching),
+              sprinting: Boolean(rp.sprinting || rp.animMode === 'run'),
+              isFast: rFast
+            });
+          }
+        });
+      }
+      return targets;
+    }
+
+    // Проверка зрения монстра по конкретному кандидату (локальному или удалённому игроку)
+    function evaluateMonsterDetectionForCandidate(dt, mWx, mWz, mRotY, cand, currentAwareness, maxSightDist, grid, levelNum) {
+      if (!cand) {
+        return { detected: false, hasLOS: false, awareness: 0, lookTowardsPlayer: false };
+      }
+      const dx = cand.x - mWx;
+      const dz = cand.z - mWz;
+      const dist = Math.hypot(dx, dz);
+      if (dist > maxSightDist) {
+        return { detected: false, hasLOS: false, awareness: Math.max(0, currentAwareness - dt * 1.35), lookTowardsPlayer: false };
+      }
+
+      let hasLOS = false;
+      if (dist < 0.6 || traceSingleSightRay(grid, levelNum, mWx, mWz, cand.x, cand.z)) {
+        hasLOS = true;
+      } else if (dist <= 15.0) {
+        const nx = -dz / dist;
+        const nz = dx / dist;
+        const half = (MAZE_SIZE * CELL_SIZE) / 2;
+        for (const offset of [-0.18, 0.18]) {
+          const sbX = mWx + nx * offset;
+          const sbZ = mWz + nz * offset;
+          const spX = cand.x + nx * offset;
+          const spZ = cand.z + nz * offset;
+          const gbx = Math.floor((sbX + half) / CELL_SIZE);
+          const gbz = Math.floor((sbZ + half) / CELL_SIZE);
+          const gpx = Math.floor((spX + half) / CELL_SIZE);
+          const gpz = Math.floor((spZ + half) / CELL_SIZE);
+          if (
+            gbx >= 0 && gbx < MAZE_SIZE && gbz >= 0 && gbz < MAZE_SIZE && grid[gbx][gbz] === 0 &&
+            gpx >= 0 && gpx < MAZE_SIZE && gpz >= 0 && gpz < MAZE_SIZE && grid[gpx][gpz] === 0
+          ) {
+            if (traceSingleSightRay(grid, levelNum, sbX, sbZ, spX, spZ)) {
+              hasLOS = true;
+              break;
+            }
+          }
+        }
+      }
+
+      if (!hasLOS) {
+        return { detected: false, hasLOS: false, awareness: Math.max(0, currentAwareness - dt * 1.35), lookTowardsPlayer: false };
+      }
+
+      const fwdX = Math.sin(mRotY);
+      const fwdZ = Math.cos(mRotY);
+      const toX = dist > 0.001 ? dx / dist : fwdX;
+      const toZ = dist > 0.001 ? dz / dist : fwdZ;
+      const facingDot = fwdX * toX + fwdZ * toZ;
+
+      if ((dist <= 5.8 && facingDot >= 0.12) || (dist <= 2.4 && facingDot >= -0.35)) {
+        return { detected: true, hasLOS: true, awareness: 1.0, lookTowardsPlayer: true };
+      }
+      if (dist <= 10.5 && facingDot >= 0.22) {
+        const gain = dt * (3.8 + (1.0 - dist / 10.5) * 3.0) * (cand.crouching ? 0.85 : 1.15);
+        const nextAw = Math.min(1.0, currentAwareness + gain);
+        return { detected: nextAw >= 0.45, hasLOS: true, awareness: nextAw, lookTowardsPlayer: true };
+      }
+      if (dist <= maxSightDist && facingDot >= 0.50) {
+        const distFactor = Math.max(0.25, 1.0 - (dist - 10.5) / Math.max(1.0, maxSightDist - 10.5));
+        const crouchFactor = cand.crouching ? 0.65 : 1.1;
+        const gain = dt * 1.55 * distFactor * crouchFactor;
+        const nextAw = Math.min(1.0, currentAwareness + gain);
+        return { detected: nextAw >= 0.85, hasLOS: true, awareness: nextAw, lookTowardsPlayer: nextAw > 0.35 };
+      }
+      if (dist <= 7.8 && (cand.sprinting || cand.isFast)) {
+        const gain = dt * (cand.sprinting ? 2.2 : 1.45);
+        const nextAw = Math.min(1.0, currentAwareness + gain);
+        return { detected: nextAw >= 0.65, hasLOS: true, awareness: nextAw, lookTowardsPlayer: true };
+      }
+      return { detected: false, hasLOS: true, awareness: Math.max(0, currentAwareness - dt * 0.95), lookTowardsPlayer: false };
+    }
+
+    // Сброс цели монстра при гибели игрока (без телепортации самого монстра!)
+    function clearMonsterTargetForDeadPlayer(deadUid, deadWx, deadWz) {
+      if (!deadUid || bacteriaTargetUid === deadUid || deadUid === 'local') {
+        bacteriaTargetUid = null;
+        bacteriaCanSeePlayer = false;
+        bacteriaAwareness = 0;
+        bacteriaMemoryTimer = 0;
+        const bGrid = worldToGrid(bacteriaRoot.position.x, bacteriaRoot.position.z);
+        const avoidGrid = (typeof deadWx === 'number' && typeof deadWz === 'number')
+          ? worldToGrid(deadWx, deadWz)
+          : bGrid;
+        bacteriaPatrolTarget = pickFarPatrolTarget(avoidGrid.gx, avoidGrid.gz);
+        bacteriaNextWaypoint = null;
+        bacteriaPathTimer = 0;
+      }
+      l1Entities.forEach(ent => {
+        if (!deadUid || ent.targetUid === deadUid || deadUid === 'local' || ent.state === 'CHASE' || ent.state === 'ATTACK') {
+          ent.targetUid = null;
+          ent.awareness = 0;
+          ent.state = 'PATROL';
+          const eGrid = worldToGrid(ent.root.position.x, ent.root.position.z);
+          const avoidGrid = (typeof deadWx === 'number' && typeof deadWz === 'number')
+            ? worldToGrid(deadWx, deadWz)
+            : eGrid;
+          const farPt = pickFarPatrolCellL1(avoidGrid.gx, avoidGrid.gz);
+          ent.targetGx = farPt.gx;
+          ent.targetGz = farPt.gz;
+          ent.stateTimer = 10.0;
+          ent.nextWaypoint = null;
+          ent.aiTickTimer = 0;
+        }
+      });
+    }
 
     function triggerJumpscareOneShot() {
-      if (isJumpscareActive) return;
+      if (isJumpscareActive || isPlayerDead) return;
       isJumpscareActive = true;
+      isPlayerDead = true;
+      isSpectatingMonster = false;
       jumpscareTimer = 0;
       if (document.pointerLockElement) document.exitPointerLock();
       sound.playJumpscareScream();
+
+      // Сразу сбрасываем статус локального игрока как цели для AI монстра (монстр остаётся на месте и переключается на патруль/других выживших)
+      const myUid = (window.BackroomsOnlineManager && window.BackroomsOnlineManager.uid) || 'local';
+      clearMonsterTargetForDeadPlayer(myUid, playerPos.x, playerPos.z);
+
+      // Мгновенно синхронизируем статус смерти (alive: false) в Firebase, чтобы остальные игроки и HOST сразу перестали считать игрока живой целью
+      if (window.BackroomsOnlineManager && window.BackroomsOnlineManager.currentRoomId) {
+        window.BackroomsOnlineManager.syncLocalPlayerToFirebase(true);
+        window.BackroomsOnlineManager.emitGameEvent?.('player_caught', {
+          uid: myUid,
+          level: currentLevel,
+          wx: Number(playerPos.x.toFixed(2)),
+          wz: Number(playerPos.z.toFixed(2))
+        });
+      }
 
       const bannerTitle = document.getElementById('deathBannerTitle');
       const entNameEl = document.getElementById('deathEntityName');
@@ -3107,7 +3286,7 @@
       document.getElementById('deathStatDiff').textContent =
         bacteriaDifficulty > 1.2 ? 'КОШМАР' : bacteriaDifficulty < 0.8 ? 'ИССЛЕДОВАТЕЛЬ' : 'ШТАТНАЯ';
 
-      // Фаза 1: 1.35 сек — чистый 3D-скример в лицо Бактерии со вспышками и криком
+      // Фаза 1: 1.35 сек — чистый 3D-скример в лицо монстра со вспышками и криком
       const flashEl = document.getElementById('jumpscareFlashOverlay');
       const menuEl = document.getElementById('jumpscareOverlay');
       flashEl.classList.add('active-flash');
@@ -3115,44 +3294,93 @@
 
       playerRig.root.visible = false;
       fpHandsGroup.visible = false;
+      updateSpectatorHudUI();
 
       clearTimeout(postJumpscareMenuTimeout);
       postJumpscareMenuTimeout = setTimeout(() => {
-        if (!isJumpscareActive) return;
+        if (!isPlayerDead) return;
+        // После 1.35 сек скример завершается: убираем фиксацию камеры скримера, чтобы монстр продолжал идти в реальном времени
+        isJumpscareActive = false;
         flashEl.classList.remove('active-flash');
         menuEl.classList.add('active-jumpscare');
         sound.playUiBeep(360, 0.08);
       }, 1350);
     }
 
+    // Включение чистого режима наблюдения (Spectator Mode) за существующим монстром БЕЗ его телепортации и БЕЗ преждевременного respawn игрока
+    function enterMonsterSpectatorMode() {
+      clearTimeout(postJumpscareMenuTimeout);
+      isJumpscareActive = false;
+      isPlayerDead = true;
+      isSpectatingMonster = true;
+      document.getElementById('jumpscareFlashOverlay').classList.remove('active-flash');
+      document.getElementById('jumpscareOverlay').classList.remove('active-jumpscare');
+      document.getElementById('dangerVignette').style.opacity = '0';
+      viewMode = 'bacteria';
+      updateViewModeUI();
+      updateSpectatorHudUI();
+      if (window.BackroomsOnlineManager && window.BackroomsOnlineManager.currentRoomId) {
+        window.BackroomsOnlineManager.syncLocalPlayerToFirebase(true);
+      }
+    }
+
     function respawnAfterJumpscare() {
       clearTimeout(postJumpscareMenuTimeout);
       isJumpscareActive = false;
+      isPlayerDead = false;
+      isSpectatingMonster = false;
+      respawnGraceTimer = 2.5;
       document.getElementById('jumpscareFlashOverlay').classList.remove('active-flash');
       document.getElementById('jumpscareOverlay').classList.remove('active-jumpscare');
       document.getElementById('dangerVignette').style.opacity = '0';
       hiddenInCabinet = null;
       isInsideWallHole = false;
       isPlayerHiddenFromMonster = false;
+
+      const inOnlineRoom = Boolean(window.BackroomsOnlineManager && window.BackroomsOnlineManager.currentRoomId);
       if (currentLevel === 2) {
         playerPos.set(0.0, EYE_STAND, 23.0);
       } else {
         playerPos.set(0.5 * CELL_SIZE, EYE_STAND, 0.5 * CELL_SIZE);
       }
+      if (inOnlineRoom && window.__backroomsGame && typeof window.__backroomsGame.applySafeSpawnOffset === 'function') {
+        window.__backroomsGame.applySafeSpawnOffset(window.BackroomsOnlineManager.uid);
+      }
+
       stamina = 100;
       suitIntegrity = 100;
       flashlightBattery = 100;
       startTimestamp = Date.now();
       activeJumpscareEntity = null;
-      bacteriaRoot.position.set(-5.5 * CELL_SIZE, 0, -5.5 * CELL_SIZE);
-      bacteriaNextWaypoint = null;
-      l1Entities.forEach(ent => {
-        const hw = gridToWorld(ent.homeGx, ent.homeGz);
-        ent.root.position.set(hw.wx, 0, hw.wz);
-        ent.state = 'PATROL';
-      });
+
+      // В одиночной игре отодвигаем монстра на безопасную стартовую точку,
+      // но в онлайн-комнате монстр НИКОГДА не телепортируется при возрождении игрока — он остаётся там, где реально находится!
+      if (!inOnlineRoom) {
+        bacteriaRoot.position.set(-5.5 * CELL_SIZE, 0, -5.5 * CELL_SIZE);
+        bacteriaNextWaypoint = null;
+        l1Entities.forEach(ent => {
+          const hw = gridToWorld(ent.homeGx, ent.homeGz);
+          ent.root.position.set(hw.wx, 0, hw.wz);
+          ent.state = 'PATROL';
+        });
+      } else {
+        const myUid = window.BackroomsOnlineManager.uid || 'local';
+        clearMonsterTargetForDeadPlayer(myUid, playerPos.x, playerPos.z);
+      }
+
+      viewMode = 'fps';
       refreshInventoryUI();
       updateViewModeUI();
+      updateSpectatorHudUI();
+
+      // Немедленно отправляем в Firebase обновлённое состояние возродившегося игрока (alive: true и новые координаты спавна)
+      if (inOnlineRoom) {
+        window.BackroomsOnlineManager.syncLocalPlayerToFirebase(true);
+        window.BackroomsOnlineManager.emitGameEvent?.('player_respawned', {
+          uid: window.BackroomsOnlineManager.uid,
+          level: currentLevel
+        });
+      }
     }
 
     function pickFarPatrolTarget(fromGx, fromGz) {
@@ -3173,6 +3401,10 @@
 
     function updateBacteriaAnimationAndAI(t, dt, playerPos) {
       if (!bacteriaSkeleton.pelvis) return;
+      if (respawnGraceTimer > 0) respawnGraceTimer = Math.max(0, respawnGraceTimer - dt);
+
+      const prevBx = bacteriaRoot.position.x;
+      const prevBz = bacteriaRoot.position.z;
 
       // Если игрок в онлайн-комнате и НЕ является HOST, положение и анимация Бактерии синхронизируются от HOST (world authority)
       if (window.BackroomsOnlineManager && window.BackroomsOnlineManager.isNonHostInActiveRoom()) {
@@ -3181,84 +3413,114 @@
         const cdz = playerPos.z - bacteriaRoot.position.z;
         const cdist = Math.hypot(cdx, cdz);
         const dangerOverlay = document.getElementById('dangerVignette');
-        if (cdist < 15 && !menuOpen && !isJumpscareActive && !isPlayerHiddenFromMonster) {
+        const localVulnerable = !menuOpen && !isJumpscareActive && !isPlayerDead && !isPlayerHiddenFromMonster && respawnGraceTimer <= 0;
+        if (cdist < 15 && localVulnerable) {
           dangerOverlay.style.opacity = String(Math.min(0.85, (15 - cdist) / 11));
         } else if (!isJumpscareActive) {
           dangerOverlay.style.opacity = '0';
         }
-        if (cdist <= 1.55 && !isPlayerHiddenFromMonster && !menuOpen && !isJumpscareActive) {
+        if (cdist <= 1.55 && localVulnerable) {
           triggerJumpscareOneShot();
         }
         return;
       }
 
-      const dx = playerPos.x - bacteriaRoot.position.x;
-      const dz = playerPos.z - bacteriaRoot.position.z;
-      const dist = Math.hypot(dx, dz);
-      const isPlayerFast = isSprinting || (!isCrouching && (keys.w || keys.s || keys.a || keys.d || Math.hypot(joyVec.x, joyVec.y) > 0.4));
+      // В онлайн-матче HOST продолжает обновлять AI монстров даже если у самого HOST открыто меню или экран смерти
+      const inOnlineMatch = Boolean(window.BackroomsOnlineManager && window.BackroomsOnlineManager.currentRoomId && window.BackroomsOnlineManager.roomState === 'playing');
+      const shouldRunAI = bacteriaActive && (!menuOpen || inOnlineMatch);
 
-      const visionEval = evaluateMonsterDetection(
-        dt,
-        bacteriaRoot.position.x,
-        bacteriaRoot.position.z,
-        bacteriaRoot.rotation.y,
-        playerPos.x,
-        playerPos.z,
-        bacteriaAwareness,
-        22.5,
-        maze,
-        0,
-        isPlayerFast
-      );
-      bacteriaAwareness = visionEval.awareness;
+      // Ищем ближайшую живую цель (локальный живой игрок + живые удалённые игроки в комнате)
+      const candidates = getValidPlayerTargetsOnLevel(0);
+      let bestCand = null;
+      let bestDist = Infinity;
+      let detectedCand = null;
+      let lookCand = null;
+      let maxAw = 0;
 
-      // Если монстр уже в активной погоне и между ним и игроком нет стены — он продолжает удерживать игрока взглядом
-      const keepVisualInChase = (bacteriaMemoryTimer > 0 && visionEval.hasLOS && dist <= 21.0);
+      for (let i = 0; i < candidates.length; i++) {
+        const c = candidates[i];
+        const d = Math.hypot(c.x - bacteriaRoot.position.x, c.z - bacteriaRoot.position.z);
+        const ev = evaluateMonsterDetectionForCandidate(
+          dt,
+          bacteriaRoot.position.x,
+          bacteriaRoot.position.z,
+          bacteriaRoot.rotation.y,
+          c,
+          bacteriaAwareness,
+          22.5,
+          maze,
+          0
+        );
+        if (ev.awareness > maxAw) maxAw = ev.awareness;
+        const keepChaseOnTarget = (bacteriaMemoryTimer > 0 && bacteriaTargetUid === c.uid && ev.hasLOS && d <= 21.0);
+        if (ev.detected || keepChaseOnTarget) {
+          if (d < bestDist) {
+            bestDist = d;
+            detectedCand = c;
+          }
+        } else if (ev.lookTowardsPlayer && ev.hasLOS && !lookCand) {
+          lookCand = c;
+        }
+      }
 
-      if (isPlayerHiddenFromMonster) {
-        // Как только игрок залез в шкаф или в нишу в стене — монстр полностью теряет след и уходит в другой сектор
-        if (bacteriaCanSeePlayer || bacteriaMemoryTimer > 0) {
-          const pGrid = worldToGrid(playerPos.x, playerPos.z);
-          bacteriaPatrolTarget = pickFarPatrolTarget(pGrid.gx, pGrid.gz);
+      if (candidates.length === 0) {
+        // Если на уровне нет ни одного живого видимого игрока — сбрасываем преследование и переводим монстра в патруль
+        if (bacteriaCanSeePlayer || bacteriaMemoryTimer > 0 || bacteriaTargetUid !== null) {
+          const bGrid = worldToGrid(bacteriaRoot.position.x, bacteriaRoot.position.z);
+          bacteriaPatrolTarget = pickFarPatrolTarget(bGrid.gx, bGrid.gz);
           bacteriaNextWaypoint = null;
         }
+        bacteriaTargetUid = null;
         bacteriaCanSeePlayer = false;
         bacteriaAwareness = 0;
         bacteriaMemoryTimer = 0;
-      } else if (visionEval.detected || keepVisualInChase) {
+      } else if (detectedCand) {
+        bestCand = detectedCand;
+        bacteriaTargetUid = detectedCand.uid;
         bacteriaCanSeePlayer = true;
         bacteriaAwareness = 1.0;
-        bacteriaMemoryTimer = 3.8; // Помнит последнюю точку 3.8 секунды после того, как игрок скрылся за углом
-        bacteriaLastSeenPos.wx = playerPos.x;
-        bacteriaLastSeenPos.wz = playerPos.z;
+        bacteriaMemoryTimer = 3.8;
+        bacteriaLastSeenPos.wx = detectedCand.x;
+        bacteriaLastSeenPos.wz = detectedCand.z;
       } else {
         bacteriaCanSeePlayer = false;
-        if (visionEval.lookTowardsPlayer && visionEval.hasLOS) {
-          // Игрок пробежал рядом или мелькнул на периферии — монстр начинает поворачиваться в его сторону с небольшой задержкой
-          const targetRot = Math.atan2(dx, dz);
-          const diffRot = Math.atan2(Math.sin(targetRot - bacteriaRoot.rotation.y), Math.cos(targetRot - bacteriaRoot.rotation.y));
-          bacteriaRoot.rotation.y += diffRot * Math.min(1, dt * 4.5);
+        bacteriaAwareness = maxAw;
+        // Проверяем, жив ли ещё игрок, которого монстр помнил по памяти
+        if (bacteriaTargetUid && !candidates.some(c => c.uid === bacteriaTargetUid)) {
+          bacteriaTargetUid = null;
+          bacteriaMemoryTimer = 0;
+          const bGrid = worldToGrid(bacteriaRoot.position.x, bacteriaRoot.position.z);
+          bacteriaPatrolTarget = pickFarPatrolTarget(bGrid.gx, bGrid.gz);
+          bacteriaNextWaypoint = null;
+        } else {
+          if (lookCand) {
+            const ldx = lookCand.x - bacteriaRoot.position.x;
+            const ldz = lookCand.z - bacteriaRoot.position.z;
+            const targetRot = Math.atan2(ldx, ldz);
+            const diffRot = Math.atan2(Math.sin(targetRot - bacteriaRoot.rotation.y), Math.cos(targetRot - bacteriaRoot.rotation.y));
+            bacteriaRoot.rotation.y += diffRot * Math.min(1, dt * 4.5);
+          }
+          bacteriaMemoryTimer = Math.max(0, bacteriaMemoryTimer - dt);
         }
-        bacteriaMemoryTimer = Math.max(0, bacteriaMemoryTimer - dt);
       }
 
-      const isActivelyChasing = (bacteriaCanSeePlayer || bacteriaMemoryTimer > 0) && !isPlayerHiddenFromMonster;
+      const isActivelyChasing = (bacteriaCanSeePlayer || bacteriaMemoryTimer > 0);
+      const localDist = Math.hypot(playerPos.x - bacteriaRoot.position.x, playerPos.z - bacteriaRoot.position.z);
 
       const dangerOverlay = document.getElementById('dangerVignette');
-      if (isActivelyChasing && dist < 15 && !menuOpen && !isJumpscareActive) {
-        dangerOverlay.style.opacity = String(Math.min(0.85, (15 - dist) / 11));
+      if (isActivelyChasing && localDist < 15 && !menuOpen && !isJumpscareActive && !isPlayerDead && !isPlayerHiddenFromMonster) {
+        dangerOverlay.style.opacity = String(Math.min(0.85, (15 - localDist) / 11));
       } else if (!isJumpscareActive) {
         dangerOverlay.style.opacity = '0';
       }
 
       if (isJumpscareActive) {
         jumpscareTimer += dt;
-        bacteriaState = 'chase';
-      } else if (bacteriaActive && !menuOpen) {
-        bacteriaState = 'chase';
+      }
 
+      if (shouldRunAI) {
         if (!isActivelyChasing) {
-          // РЕЖИМ ЧЕСТНОГО ПАТРУЛИРОВАНИЯ: монстр не видит игрока сквозь стены и спокойно бродит по маршруту
+          // РЕЖИМ ЧЕСТНОГО ПАТРУЛИРОВАНИЯ: монстр спокойно ходит по лабиринту
           bacteriaPathTimer -= dt;
           const bGrid = worldToGrid(bacteriaRoot.position.x, bacteriaRoot.position.z);
           if (bacteriaPathTimer <= 0 || !bacteriaNextWaypoint || (bGrid.gx === bacteriaPatrolTarget.gx && bGrid.gz === bacteriaPatrolTarget.gz)) {
@@ -3290,53 +3552,56 @@
             bacteriaRoot.position.z += stepZ;
           }
         } else {
-          // РЕЖИМ ПОГОНИ (только когда увидел игрока в прямой видимости или бежит к последнему углу, где видел)
-          if (dist <= 1.55 && !isPlayerHiddenFromMonster) {
+          // РЕЖИМ ПОГОНИ ЗА АКТИВНОЙ ЖИВОЙ ЦЕЛЬЮ
+          if (!isPlayerDead && !isJumpscareActive && !isPlayerHiddenFromMonster && respawnGraceTimer <= 0 && localDist <= 1.55) {
             triggerJumpscareOneShot();
-            return;
-          }
+          } else if (bestCand && !bestCand.isLocal && bestDist <= 1.55) {
+            // Монстр настиг удалённого игрока — сбрасываем цель на стороне HOST, чтобы монстр не бежал на месте в точке пойманного игрока
+            clearMonsterTargetForDeadPlayer(bestCand.uid, bestCand.x, bestCand.z);
+          } else {
+            const goalWx = (bacteriaCanSeePlayer && bestCand) ? bestCand.x : bacteriaLastSeenPos.wx;
+            const goalWz = (bacteriaCanSeePlayer && bestCand) ? bestCand.z : bacteriaLastSeenPos.wz;
 
-          const goalWx = bacteriaCanSeePlayer ? playerPos.x : bacteriaLastSeenPos.wx;
-          const goalWz = bacteriaCanSeePlayer ? playerPos.z : bacteriaLastSeenPos.wz;
+            bacteriaPathTimer -= dt;
+            if (bacteriaPathTimer <= 0 || !bacteriaNextWaypoint) {
+              bacteriaNextWaypoint = computeNextStepBFS(
+                bacteriaRoot.position.x,
+                bacteriaRoot.position.z,
+                goalWx,
+                goalWz
+              );
+              bacteriaPathTimer = 0.22;
+            }
 
-          bacteriaPathTimer -= dt;
-          if (bacteriaPathTimer <= 0 || !bacteriaNextWaypoint) {
-            bacteriaNextWaypoint = computeNextStepBFS(
-              bacteriaRoot.position.x,
-              bacteriaRoot.position.z,
-              goalWx,
-              goalWz
-            );
-            bacteriaPathTimer = 0.22;
-          }
+            const targetX = (bacteriaCanSeePlayer && bestCand && bestDist < 10.5) ? bestCand.x : (bacteriaNextWaypoint ? bacteriaNextWaypoint.wx : goalWx);
+            const targetZ = (bacteriaCanSeePlayer && bestCand && bestDist < 10.5) ? bestCand.z : (bacteriaNextWaypoint ? bacteriaNextWaypoint.wz : goalWz);
+            const wdx = targetX - bacteriaRoot.position.x;
+            const wdz = targetZ - bacteriaRoot.position.z;
+            const wlen = Math.hypot(wdx, wdz) || 0.001;
 
-          const targetX = (bacteriaCanSeePlayer && dist < 10.5) ? playerPos.x : bacteriaNextWaypoint.wx;
-          const targetZ = (bacteriaCanSeePlayer && dist < 10.5) ? playerPos.z : bacteriaNextWaypoint.wz;
-          const wdx = targetX - bacteriaRoot.position.x;
-          const wdz = targetZ - bacteriaRoot.position.z;
-          const wlen = Math.hypot(wdx, wdz) || 0.001;
+            const moveSpeed = 4.75 * bacteriaDifficulty;
+            bacteriaRoot.rotation.y = Math.atan2(wdx, wdz);
 
-          const moveSpeed = 4.75 * bacteriaDifficulty;
-          bacteriaRoot.rotation.y = Math.atan2(wdx, wdz);
+            const stepX = (wdx / wlen) * moveSpeed * dt;
+            const stepZ = (wdz / wlen) * moveSpeed * dt;
+            if (canEntityMoveTo(bacteriaRoot.position.x + stepX, bacteriaRoot.position.z)) {
+              bacteriaRoot.position.x += stepX;
+            }
+            if (canEntityMoveTo(bacteriaRoot.position.x, bacteriaRoot.position.z + stepZ)) {
+              bacteriaRoot.position.z += stepZ;
+            }
 
-          const stepX = (wdx / wlen) * moveSpeed * dt;
-          const stepZ = (wdz / wlen) * moveSpeed * dt;
-          if (canEntityMoveTo(bacteriaRoot.position.x + stepX, bacteriaRoot.position.z)) {
-            bacteriaRoot.position.x += stepX;
-          }
-          if (canEntityMoveTo(bacteriaRoot.position.x, bacteriaRoot.position.z + stepZ)) {
-            bacteriaRoot.position.z += stepZ;
-          }
-
-          bacteriaRoarCooldown -= dt;
-          if (bacteriaCanSeePlayer && dist < 15 && bacteriaRoarCooldown <= 0) {
-            sound.playBacteriaRoar(Math.max(0.35, 1 - dist / 22));
-            bacteriaRoarCooldown = 7.0 + Math.random() * 4.0;
+            bacteriaRoarCooldown -= dt;
+            if (bacteriaCanSeePlayer && localDist < 15 && bacteriaRoarCooldown <= 0) {
+              sound.playBacteriaRoar(Math.max(0.35, 1 - localDist / 22));
+              bacteriaRoarCooldown = 7.0 + Math.random() * 4.0;
+            }
           }
         }
-      } else {
-        bacteriaState = 'idle';
       }
+
+      const movedDist = Math.hypot(bacteriaRoot.position.x - prevBx, bacteriaRoot.position.z - prevBz);
+      bacteriaState = (movedDist > 0.0005 || isJumpscareActive) ? 'chase' : 'idle';
 
       if (bacteriaState === 'idle') {
         const breath = Math.sin(t * 2.1);
@@ -10769,13 +11034,15 @@
         if (soundDecoy.timer <= 0) soundDecoy.active = false;
       }
 
+      if (respawnGraceTimer > 0) respawnGraceTimer = Math.max(0, respawnGraceTimer - dt);
+
       // Если мы в онлайн-комнате и НЕ являемся HOST, позиции монстров синхронизируются от HOST (world authority)
       if (window.BackroomsOnlineManager && window.BackroomsOnlineManager.isNonHostInActiveRoom()) {
         window.BackroomsOnlineManager.applySyncedMonsters(elapsed, dt);
         for (let i = 0; i < l1Entities.length; i++) {
           const ent = l1Entities[i];
           const d = Math.hypot(playerPos.x - ent.root.position.x, playerPos.z - ent.root.position.z);
-          if (!isPlayerHiddenFromMonster && exitHideGraceTimer <= 0 && d <= 1.62 && (ent.state === 'CHASE' || ent.state === 'ATTACK')) {
+          if (!isPlayerDead && !isJumpscareActive && !isPlayerHiddenFromMonster && respawnGraceTimer <= 0 && exitHideGraceTimer <= 0 && d <= 1.62 && (ent.state === 'CHASE' || ent.state === 'ATTACK')) {
             activeJumpscareEntity = ent;
             triggerJumpscareOneShot();
             break;
@@ -10786,34 +11053,30 @@
 
       const isBlackout = (l1LightState === LIGHT_STATES.BLACKOUT);
       const isFlicker = (l1LightState === LIGHT_STATES.FLICKERING);
+      const inOnlineMatch = Boolean(window.BackroomsOnlineManager && window.BackroomsOnlineManager.currentRoomId && window.BackroomsOnlineManager.roomState === 'playing');
+      const shouldRunAI = bacteriaActive && (!menuOpen || inOnlineMatch);
+      const candidates = getValidPlayerTargetsOnLevel(1);
       let closestThreatDist = 999;
 
       for (let i = 0; i < l1Entities.length; i++) {
         const ent = l1Entities[i];
         const pos = ent.root.position;
-        const dx = playerPos.x - pos.x;
-        const dz = playerPos.z - pos.z;
-        const d2 = dx * dx + dz * dz;
-        const dist = Math.sqrt(d2);
+        const localDx = playerPos.x - pos.x;
+        const localDz = playerPos.z - pos.z;
+        const d2 = localDx * localDx + localDz * localDz;
+        const localDist = Math.sqrt(d2);
 
-        if (isJumpscareActive && activeJumpscareEntity === ent) {
-          if (ent.kind === 'hound') animateHoundModel(ent.model, 'scream', elapsed);
-          else animateSkinStealerModel(ent.model, 'attack', elapsed);
-          continue;
-        }
-
-        if (!bacteriaActive || menuOpen) {
+        if (!shouldRunAI) {
           if (ent.kind === 'hound') animateHoundModel(ent.model, 'idle', elapsed);
           else animateSkinStealerModel(ent.model, 'idle', elapsed);
           continue;
         }
 
-        // МГНОВЕННЫЙ СБРОС ПОГОНИ ПРИ ПРЯТКАХ В ШКАФ ИЛИ НИШУ:
-        // Сущность сразу теряет игрока и уходит патрулировать в дальний сектор (не застревая у дверей шкафа!)
-        if (isPlayerHiddenFromMonster && (ent.state === 'CHASE' || ent.state === 'ATTACK' || ent.state === 'SEARCH' || ent.state === 'INVESTIGATE' || dist < 9.5)) {
-          const pGrid = worldToGrid(playerPos.x, playerPos.z);
-          const farPt = pickFarPatrolCellL1(pGrid.gx, pGrid.gz);
+        if (candidates.length === 0 && (ent.state === 'CHASE' || ent.state === 'ATTACK' || ent.state === 'SEARCH' || ent.state === 'INVESTIGATE')) {
+          const eGrid = worldToGrid(pos.x, pos.z);
+          const farPt = pickFarPatrolCellL1(eGrid.gx, eGrid.gz);
           ent.state = 'PATROL';
+          ent.targetUid = null;
           ent.targetGx = farPt.gx;
           ent.targetGz = farPt.gz;
           ent.stateTimer = 12.0;
@@ -10827,37 +11090,59 @@
         ent.roarCooldown -= dt;
 
         const sightRange = isBlackout ? ent.blackoutSight : (isFlicker ? ent.normalSight * 1.25 : ent.normalSight);
-        const isPlayerFast = isSprinting || (!isCrouching && (keys.w || keys.s || keys.a || keys.d || Math.hypot(joyVec.x, joyVec.y) > 0.4));
+        let bestCand = null;
+        let bestDist = Infinity;
+        let canSee = false;
+        let canHear = false;
+        let lookCand = null;
+        let maxAw = 0;
 
-        // Непрерывная проверка зрения (Line-of-Sight + угол обзора монстра + дистанция)
-        const visionEval = (exitHideGraceTimer <= 0)
-          ? evaluateMonsterDetection(
+        if (exitHideGraceTimer <= 0) {
+          for (let cIdx = 0; cIdx < candidates.length; cIdx++) {
+            const c = candidates[cIdx];
+            const cDist = Math.hypot(c.x - pos.x, c.z - pos.z);
+            const ev = evaluateMonsterDetectionForCandidate(
               dt,
               pos.x,
               pos.z,
               ent.root.rotation.y || 0,
-              playerPos.x,
-              playerPos.z,
+              c,
               ent.awareness || 0,
               sightRange,
               l1Maze,
-              1,
-              isPlayerFast
-            )
-          : { detected: false, hasLOS: false, awareness: 0, lookTowardsPlayer: false };
+              1
+            );
+            if (ev.awareness > maxAw) maxAw = ev.awareness;
+            const keepChase = ((ent.state === 'CHASE' || ent.state === 'ATTACK') && ent.targetUid === c.uid && ev.hasLOS && cDist <= sightRange);
+            if (ev.detected || keepChase) {
+              if (cDist < bestDist) {
+                bestDist = cDist;
+                bestCand = c;
+                canSee = true;
+              }
+            } else {
+              const hearRadius = isBlackout ? (c.sprinting ? 16.0 : 6.5) : (c.sprinting ? 8.5 : 2.8);
+              if (ev.hasLOS && (c.sprinting || !c.crouching) && cDist < hearRadius && !bestCand) {
+                bestCand = c;
+                bestDist = cDist;
+                canHear = true;
+              }
+              if (ev.lookTowardsPlayer && ev.hasLOS && !lookCand) {
+                lookCand = c;
+              }
+            }
+          }
+        }
+        ent.awareness = maxAw;
 
-        ent.awareness = visionEval.awareness;
-        const keepInChase = ((ent.state === 'CHASE' || ent.state === 'ATTACK') && visionEval.hasLOS && dist <= sightRange);
-        const canSee = (!isPlayerHiddenFromMonster && exitHideGraceTimer <= 0) && (visionEval.detected || keepInChase);
-
-        // Если игрок близко перед монстром без препятствий — реагируем немедленно, не дожидаясь следующего тика BFS
-        if (canSee) {
-          ent.state = dist < 1.9 ? 'ATTACK' : 'CHASE';
-          ent.lastSeenWx = playerPos.x;
-          ent.lastSeenWz = playerPos.z;
+        if (canSee && bestCand) {
+          ent.targetUid = bestCand.uid;
+          ent.state = bestDist < 1.9 ? 'ATTACK' : 'CHASE';
+          ent.lastSeenWx = bestCand.x;
+          ent.lastSeenWz = bestCand.z;
           ent.stateTimer = 4.5;
-        } else if (visionEval.lookTowardsPlayer && visionEval.hasLOS && !isPlayerHiddenFromMonster) {
-          const targetRot = Math.atan2(dx, dz);
+        } else if (lookCand) {
+          const targetRot = Math.atan2(lookCand.x - pos.x, lookCand.z - pos.z);
           const curRot = ent.root.rotation.y || 0;
           const diffRot = Math.atan2(Math.sin(targetRot - curRot), Math.cos(targetRot - curRot));
           ent.root.rotation.y = curRot + diffRot * Math.min(1, dt * 4.5);
@@ -10865,9 +11150,6 @@
 
         if (ent.aiTickTimer <= 0) {
           ent.aiTickTimer = 0.22 + (i * 0.04);
-
-          const hearRadius = isBlackout ? (isSprinting ? 16.0 : 6.5) : (isSprinting ? 8.5 : 2.8);
-          const canHearPlayer = (!isPlayerHiddenFromMonster && exitHideGraceTimer <= 0 && visionEval.hasLOS && (isSprinting || !isCrouching) && dist < hearRadius);
 
           if (soundDecoy.active && ent.state !== 'CHASE' && ent.state !== 'ATTACK') {
             const decoyDist = Math.hypot(soundDecoy.wx - pos.x, soundDecoy.wz - pos.z);
@@ -10879,24 +11161,24 @@
             }
           }
 
-          if (isPlayerHiddenFromMonster) {
+          if (candidates.length === 0) {
             if (ent.state !== 'PATROL') {
-              const pGrid = worldToGrid(playerPos.x, playerPos.z);
-              const farPt = pickFarPatrolCellL1(pGrid.gx, pGrid.gz);
+              const eGrid = worldToGrid(pos.x, pos.z);
+              const farPt = pickFarPatrolCellL1(eGrid.gx, eGrid.gz);
               ent.state = 'PATROL';
               ent.targetGx = farPt.gx;
               ent.targetGz = farPt.gz;
               ent.stateTimer = 10.0;
             }
-          } else if (canSee) {
-            ent.state = dist < 1.9 ? 'ATTACK' : 'CHASE';
-            ent.lastSeenWx = playerPos.x;
-            ent.lastSeenWz = playerPos.z;
+          } else if (canSee && bestCand) {
+            ent.state = bestDist < 1.9 ? 'ATTACK' : 'CHASE';
+            ent.lastSeenWx = bestCand.x;
+            ent.lastSeenWz = bestCand.z;
             ent.stateTimer = 4.5;
-          } else if (canHearPlayer && ent.state !== 'CHASE' && ent.state !== 'ATTACK') {
+          } else if (canHear && bestCand && ent.state !== 'CHASE' && ent.state !== 'ATTACK') {
             ent.state = 'INVESTIGATE';
-            ent.lastSeenWx = playerPos.x;
-            ent.lastSeenWz = playerPos.z;
+            ent.lastSeenWx = bestCand.x;
+            ent.lastSeenWz = bestCand.z;
             ent.stateTimer = 5.5;
           } else {
             if (ent.state === 'CHASE' || ent.state === 'ATTACK') { ent.state = 'SEARCH'; ent.stateTimer = 4.2; }
@@ -10919,8 +11201,8 @@
           }
 
           let goalW = null;
-          if (ent.state === 'CHASE' || ent.state === 'ATTACK') goalW = { wx: playerPos.x, wz: playerPos.z };
-          else if (ent.state === 'INVESTIGATE' || ent.state === 'SEARCH') goalW = { wx: ent.lastSeenWx, wz: ent.lastSeenWz };
+          if ((ent.state === 'CHASE' || ent.state === 'ATTACK') && bestCand) goalW = { wx: bestCand.x, wz: bestCand.z };
+          else if (ent.state === 'CHASE' || ent.state === 'ATTACK' || ent.state === 'INVESTIGATE' || ent.state === 'SEARCH') goalW = { wx: ent.lastSeenWx, wz: ent.lastSeenWz };
           else if (ent.state === 'RETURN') goalW = gridToWorld(ent.homeGx, ent.homeGz);
           else if (ent.state === 'PATROL') goalW = gridToWorld(ent.targetGx, ent.targetGz);
 
@@ -10928,13 +11210,14 @@
         }
 
         if (ent.state === 'CHASE' || ent.state === 'ATTACK') {
-          closestThreatDist = Math.min(closestThreatDist, dist);
+          closestThreatDist = Math.min(closestThreatDist, localDist);
         }
 
-        if (!isPlayerHiddenFromMonster && exitHideGraceTimer <= 0 && dist <= 1.65 && (ent.state === 'CHASE' || ent.state === 'ATTACK')) {
+        if (!isPlayerDead && !isJumpscareActive && !isPlayerHiddenFromMonster && respawnGraceTimer <= 0 && exitHideGraceTimer <= 0 && localDist <= 1.65 && (ent.state === 'CHASE' || ent.state === 'ATTACK')) {
           activeJumpscareEntity = ent;
           triggerJumpscareOneShot();
-          return;
+        } else if (bestCand && !bestCand.isLocal && bestDist <= 1.65 && (ent.state === 'CHASE' || ent.state === 'ATTACK')) {
+          clearMonsterTargetForDeadPlayer(bestCand.uid, bestCand.x, bestCand.z);
         }
 
         let moveSpeed = 0;
@@ -10944,19 +11227,18 @@
           moveSpeed = (isBlackout ? ent.blackoutSpeed * 0.88 : ent.normalSpeed * 1.25) * bacteriaDifficulty;
         } else if (ent.state === 'CHASE' || ent.state === 'ATTACK') {
           moveSpeed = (isBlackout ? ent.chaseSpeed * 1.08 : ent.chaseSpeed * 0.94) * bacteriaDifficulty;
-          if (ent.roarCooldown <= 0 && dist < 17) {
-            if (ent.kind === 'hound') sound.playHoundScream(Math.max(0.35, 1 - dist / 20));
-            else sound.playSkinStealerRoar(Math.max(0.35, 1 - dist / 20));
+          if (ent.roarCooldown <= 0 && localDist < 17) {
+            if (ent.kind === 'hound') sound.playHoundScream(Math.max(0.35, 1 - localDist / 20));
+            else sound.playSkinStealerRoar(Math.max(0.35, 1 - localDist / 20));
             ent.roarCooldown = 7.5 + Math.random() * 4.0;
           }
-        } else if (ent.kind === 'skinstealer' && ent.roarCooldown <= 0 && dist < 24) {
-          // Кожекрад периодически имитирует ломаный человеческий голос («Помоги...») для приманки
-          sound.playSkinStealerMimicVoice(Math.max(0.25, 1 - dist / 26));
+        } else if (ent.kind === 'skinstealer' && ent.roarCooldown <= 0 && localDist < 24) {
+          sound.playSkinStealerMimicVoice(Math.max(0.25, 1 - localDist / 26));
           ent.roarCooldown = 11.0 + Math.random() * 6.0;
         }
 
-        const directSightChase = (canSee && dist < 10.5);
-        const steerTarget = directSightChase ? { wx: playerPos.x, wz: playerPos.z } : ent.nextWaypoint;
+        const directSightChase = (canSee && bestCand && bestDist < 10.5);
+        const steerTarget = directSightChase ? { wx: bestCand.x, wz: bestCand.z } : ent.nextWaypoint;
         if (moveSpeed > 0.05 && steerTarget) {
           const wdx = steerTarget.wx - pos.x;
           const wdz = steerTarget.wz - pos.z;
@@ -11443,18 +11725,19 @@
     // Переключение вида (1-е лицо / 3-е лицо Hazmat / Бактерия)
     function updateViewModeUI() {
       const label = document.getElementById('viewModeLabel');
+      const showLocalBody = !isJumpscareActive && !isPlayerDead;
       if (viewMode === 'fps') {
         if (label) label.textContent = '1-Е ЛИЦО';
         playerRig.root.visible = false;
-        fpHandsGroup.visible = !isJumpscareActive;
+        fpHandsGroup.visible = showLocalBody;
       } else if (viewMode === 'tps') {
         if (label) label.textContent = '3-Е ЛИЦО';
-        playerRig.root.visible = !isJumpscareActive;
+        playerRig.root.visible = showLocalBody;
         playerRig.head.visible = true;
         fpHandsGroup.visible = false;
       } else {
         if (label) label.textContent = 'БАКТЕРИЯ';
-        playerRig.root.visible = !isJumpscareActive;
+        playerRig.root.visible = showLocalBody;
         playerRig.head.visible = true;
         fpHandsGroup.visible = false;
       }
@@ -11607,6 +11890,12 @@
       respawnAfterJumpscare();
       showToast('НОВАЯ ЗАПИСЬ КАМЕРЫ KV-31 • ВЫ ВОЗРОДИЛИСЬ В ЦЕНТРЕ ЛАБИРИНТА');
     });
+    bindFastBtn(document.getElementById('hudSpectatorRespawnBtn'), () => {
+      sound.playUiBeep(720, 0.06);
+      viewMode = 'fps';
+      respawnAfterJumpscare();
+      showToast('НОВАЯ ЗАПИСЬ КАМЕРЫ KV-31 • ВЫ ВОЗРОДИЛИСЬ В ЦЕНТРЕ ЛАБИРИНТА');
+    });
     bindFastBtn(document.getElementById('btnJumpscareToMenu'), () => {
       sound.playUiBeep(520, 0.05);
       respawnAfterJumpscare();
@@ -11614,10 +11903,8 @@
     });
     bindFastBtn(document.getElementById('btnSpectateBacteria'), () => {
       sound.playUiBeep(620, 0.05);
-      respawnAfterJumpscare();
-      viewMode = 'bacteria';
-      updateViewModeUI();
-      showToast('РЕЖИМ НАБЛЮДЕНИЯ ЗА СУЩНОСТЬЮ «БАКТЕРИЯ» • [V] Вернуться к 1-му лицу');
+      enterMonsterSpectatorMode();
+      showToast('РЕЖИМ НАБЛЮДЕНИЯ ЗА МОНСТРОМ • [ENTER] Возродиться');
     });
     bindFastBtn(document.getElementById('btnJumpscareLobby'), () => {
       sound.playUiBeep(560, 0.05);
@@ -11854,13 +12141,19 @@
     window.addEventListener('keydown', (e) => {
       sound.init();
       const c = e.code;
-      if (isJumpscareActive) {
-        if (c === 'Enter' || c === 'Space') {
+      if (isJumpscareActive || isPlayerDead) {
+        if (c === 'Enter' || (c === 'Space' && !isSpectatingMonster)) {
           e.preventDefault();
           document.getElementById('btnRespawnNow').click();
         } else if (c === 'Escape') {
           e.preventDefault();
-          document.getElementById('btnJumpscareToMenu').click();
+          if (isSpectatingMonster) {
+            isSpectatingMonster = false;
+            updateSpectatorHudUI();
+            document.getElementById('jumpscareOverlay').classList.add('active-jumpscare');
+          } else {
+            document.getElementById('btnJumpscareToMenu').click();
+          }
         }
         return;
       }
@@ -11972,8 +12265,8 @@
       const dt = Math.min(clock.getDelta(), 0.1);
       const elapsed = clock.getElapsedTime();
 
-      const fwdInput = (menuOpen || isJumpscareActive || hiddenInCabinet) ? 0 : (keys.w ? 1 : 0) - (keys.s ? 1 : 0) - joyVec.y;
-      const strInput = (menuOpen || isJumpscareActive || hiddenInCabinet) ? 0 : (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + joyVec.x;
+      const fwdInput = (menuOpen || isJumpscareActive || isPlayerDead || hiddenInCabinet) ? 0 : (keys.w ? 1 : 0) - (keys.s ? 1 : 0) - joyVec.y;
+      const strInput = (menuOpen || isJumpscareActive || isPlayerDead || hiddenInCabinet) ? 0 : (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + joyVec.x;
       const len = Math.hypot(fwdInput, strInput);
       const isMoving = len > 0.06;
 
@@ -12268,16 +12561,40 @@
         }
         camera.position.set(cx, currentEyeY + 0.35 - Math.sin(pitch * 0.5) * 0.8, cz);
         camera.lookAt(playerPos.x, currentEyeY - 0.15, playerPos.z);
-      } else if (viewMode === 'bacteria') {
-        const targetRoot = (currentLevel === 1 && l1Entities.length > 0) ? l1Entities[0].root : bacteriaRoot;
+      } else if (viewMode === 'bacteria' || (isPlayerDead && !isJumpscareActive)) {
+        const targetRoot = (currentLevel === 1 && l1Entities.length > 0)
+          ? (activeJumpscareEntity ? activeJumpscareEntity.root : l1Entities[0].root)
+          : bacteriaRoot;
         const bPos = targetRoot.position;
-        const orbitAngle = yaw + elapsed * 0.25;
-        camera.position.set(
-          bPos.x + Math.sin(orbitAngle) * 3.1,
-          1.65 - Math.sin(pitch) * 0.7,
-          bPos.z + Math.cos(orbitAngle) * 3.1
-        );
-        camera.lookAt(bPos.x, 1.15, bPos.z);
+        const bRotY = targetRoot.rotation.y || 0;
+        // Камера следует позади/вокруг реального монстра с проверкой стен коридора, чтобы не проваливаться сквозь стены
+        const desiredAngle = isSpectatingMonster ? (bRotY + Math.PI + yaw * 0.65) : (yaw + elapsed * 0.25);
+        const dirX = Math.sin(desiredAngle);
+        const dirZ = Math.cos(desiredAngle);
+        let chosenDist = 0.65;
+        const candidateDists = [2.15, 1.65, 1.25, 0.85, 0.55];
+        for (let dIdx = 0; dIdx < candidateDists.length; dIdx++) {
+          const dTest = candidateDists[dIdx];
+          const tx = bPos.x + dirX * dTest;
+          const tz = bPos.z + dirZ * dTest;
+          const checkFn = (currentLevel === 1) ? canEntityMoveToL1 : canEntityMoveTo;
+          if (checkFn(tx, tz, 0.24)) {
+            chosenDist = dTest;
+            break;
+          }
+        }
+        const targetCamX = bPos.x + dirX * chosenDist;
+        const targetCamY = Math.max(0.85, Math.min(2.45, 1.72 - Math.sin(pitch) * 0.45));
+        const targetCamZ = bPos.z + dirZ * chosenDist;
+        const camLerp = Math.min(1, dt * 14);
+        if (Math.hypot(camera.position.x - targetCamX, camera.position.z - targetCamZ) > 8.0) {
+          camera.position.set(targetCamX, targetCamY, targetCamZ);
+        } else {
+          camera.position.x += (targetCamX - camera.position.x) * camLerp;
+          camera.position.y += (targetCamY - camera.position.y) * camLerp;
+          camera.position.z += (targetCamZ - camera.position.z) * camLerp;
+        }
+        camera.lookAt(bPos.x, 1.38, bPos.z);
       }
 
       if (currentLevel === 1) {
@@ -12333,7 +12650,9 @@
       createExplorerRig,
       animateExplorerRig,
       canMoveTo: (nx, nz) => canMoveTo(nx, nz),
-      isAlive: () => !isJumpscareActive,
+      isAlive: () => !isJumpscareActive && !isPlayerDead,
+      isSpectating: () => Boolean(isPlayerDead && isSpectatingMonster),
+      clearMonsterTargetForDeadPlayer,
       applySafeSpawnOffset: (uidStr) => {
         if (!uidStr) return;
         let hash = 0;
@@ -12388,7 +12707,8 @@
           sprinting: Boolean(isSprinting || keys.shift),
           flashlight: Boolean(flashlightOn),
           hidden: Boolean(hiddenInCabinet || isInsideWallHole),
-          alive: Boolean(!isJumpscareActive)
+          alive: Boolean(!isJumpscareActive && !isPlayerDead),
+          spectating: Boolean(isPlayerDead && isSpectatingMonster)
         };
       },
       getCurrentLevel: () => currentLevel,
@@ -12440,17 +12760,20 @@
         // Плавная интерполяция Бактерии на Уровне 0 от авторитетного клиента (HOST)
         if (mData.b0 && currentLevel === 0) {
           const b0 = mData.b0;
-          const distJump = Math.hypot(b0.x - bacteriaRoot.position.x, b0.z - bacteriaRoot.position.z);
+          const prevBx = bacteriaRoot.position.x;
+          const prevBz = bacteriaRoot.position.z;
+          const distJump = Math.hypot(b0.x - prevBx, b0.z - prevBz);
           if (distJump > 12) {
             bacteriaRoot.position.set(b0.x, 0, b0.z);
           } else {
-            bacteriaRoot.position.x += (b0.x - bacteriaRoot.position.x) * Math.min(1, dt * 11);
-            bacteriaRoot.position.z += (b0.z - bacteriaRoot.position.z) * Math.min(1, dt * 11);
+            bacteriaRoot.position.x += (b0.x - prevBx) * Math.min(1, dt * 11);
+            bacteriaRoot.position.z += (b0.z - prevBz) * Math.min(1, dt * 11);
           }
+          const movedStep = Math.hypot(bacteriaRoot.position.x - prevBx, bacteriaRoot.position.z - prevBz);
           const targetRy = typeof b0.ry === 'number' ? b0.ry : 0;
           const diffRy = Math.atan2(Math.sin(targetRy - bacteriaRoot.rotation.y), Math.cos(targetRy - bacteriaRoot.rotation.y));
           bacteriaRoot.rotation.y += diffRy * Math.min(1, dt * 11);
-          bacteriaState = b0.st || 'chase';
+          bacteriaState = (b0.st === 'idle' || (movedStep < 0.0004 && distJump < 0.02)) ? 'idle' : 'chase';
 
           if (bacteriaSkeleton.pelvis) {
             if (bacteriaState === 'idle') {
@@ -13793,8 +14116,12 @@
       rp.equip = data.equip || 'vhs';
       rp.crouching = Boolean(data.crouching || data.crouch);
       rp.flashlight = data.flashlight !== false;
+      const wasAlive = rp.alive;
       rp.hidden = Boolean(data.hidden);
       rp.alive = data.alive !== false;
+      if (wasAlive && !rp.alive) {
+        g?.clearMonsterTargetForDeadPlayer?.(pUid, rp.currentPos.x, rp.currentPos.z);
+      }
 
       if (rp.rig.vhsGroup && rp.rig.flashlightGroup) {
         rp.rig.vhsGroup.visible = (rp.equip === 'vhs');
@@ -14028,6 +14355,13 @@
       if (!g) return;
       const lvl = typeof payload.level === 'number' ? payload.level : currentLevel;
 
+      if (type === 'player_caught') {
+        g.clearMonsterTargetForDeadPlayer?.(payload.uid, payload.wx, payload.wz);
+        return;
+      }
+      if (type === 'player_respawned') {
+        return;
+      }
       if (type === 'match_start') {
         const targetLvl = typeof payload.level === 'number' ? payload.level : this.lobbyLevel;
         this.roomState = 'playing';
