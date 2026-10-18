@@ -6,6 +6,9 @@
   <title>BACKROOMS: ESCAPE TOGETHER // Level 0, Level 1 & Level 2: Pipe Dreams</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;600;700&family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet">
@@ -8675,7 +8678,7 @@
                                 if (clockSystem.instances[this.stateKey]) clockSystem.instances[this.stateKey].render();
                                 evaluateLevel2Progress();
                                 if (syncRemote && window.BackroomsOnlineManager) {
-                                    window.BackroomsOnlineManager.emitGameEvent('l2_terminal_solved', {
+                                    window.BackroomsOnlineManager.emitGameEvent?.('l2_terminal_solved', {
                                         sector: this.stateKey,
                                         userInput: st.userInput,
                                         codeVerified: st.codeVerified,
@@ -9736,7 +9739,7 @@
       evaluateLevel2Progress();
 
       if (syncRemote && window.BackroomsOnlineManager) {
-        window.BackroomsOnlineManager.emitGameEvent('l2_valve_turn', {
+        window.BackroomsOnlineManager.emitGameEvent?.('l2_valve_turn', {
           valveKey: valveKey.startsWith('BRANCH_') ? valveKey.replace('BRANCH_', '') : valveKey,
           angleDeg: valveSt.angleDeg
         });
@@ -9939,7 +9942,7 @@
           l1HermeticDoorInst.blueOutline.state = 'activated';
         }
         if (window.BackroomsOnlineManager) {
-          window.BackroomsOnlineManager.emitGameEvent('l1_hermetic_open', { level: 1 });
+          window.BackroomsOnlineManager.emitGameEvent?.('l1_hermetic_open', { level: 1 });
         }
       }
     }
@@ -9961,7 +9964,7 @@
         sound.playMechanismSound('HeavyClank', 0.8);
         showCharacterThought('«Вы прошли через гермозатвор ГД-800 в стартовый туннель Уровня 2: Pipe Dreams!»', 4200);
         if (window.BackroomsOnlineManager) {
-          window.BackroomsOnlineManager.emitGameEvent('l1_to_l2_transition', { level: 2 });
+          window.BackroomsOnlineManager.emitGameEvent?.('l1_to_l2_transition', { level: 2 });
         }
         loadLevel(2);
       }
@@ -9989,7 +9992,7 @@
         modal.classList.add('flex');
       }
       if (window.BackroomsOnlineManager) {
-        window.BackroomsOnlineManager.emitGameEvent('l2_stage_complete', { level: 2 });
+        window.BackroomsOnlineManager.emitGameEvent?.('l2_stage_complete', { level: 2 });
       }
     }
 
@@ -10173,7 +10176,7 @@
             doorInst.toggleDoor();
             evaluateLevel2Progress();
             if (window.BackroomsOnlineManager) {
-              window.BackroomsOnlineManager.emitGameEvent('l2_door_toggle', {
+              window.BackroomsOnlineManager.emitGameEvent?.('l2_door_toggle', {
                 doorKey: t.stateKey,
                 targetMode: gameState.doors[t.stateKey].targetMode
               });
@@ -10327,7 +10330,7 @@
           fb.handleTargetRad = 0;
         }, 120);
         if (window.BackroomsOnlineManager) {
-          window.BackroomsOnlineManager.emitGameEvent('door_open', { target: 'fusebox', level: currentLevel, angle: 108 });
+          window.BackroomsOnlineManager.emitGameEvent?.('door_open', { target: 'fusebox', level: currentLevel, angle: 108 });
         }
         return;
       }
@@ -10380,8 +10383,8 @@
         sound.playMechanismSound('elevator_ding', 1.0);
         setTimeout(() => sound.playMechanismSound('creak', 0.8), 240);
         if (window.BackroomsOnlineManager) {
-          window.BackroomsOnlineManager.emitGameEvent('elevator_called', { level: currentLevel });
-          window.BackroomsOnlineManager.emitGameEvent('elevator_open', { level: currentLevel });
+          window.BackroomsOnlineManager.emitGameEvent?.('elevator_called', { level: currentLevel });
+          window.BackroomsOnlineManager.emitGameEvent?.('elevator_open', { level: currentLevel });
         }
         return;
       }
@@ -10392,7 +10395,7 @@
       const targetNextLevel = (currentLevel === 0) ? 1 : 2;
       sound.playMechanismSound('latch', 0.9);
       if (window.BackroomsOnlineManager) {
-        window.BackroomsOnlineManager.emitGameEvent('elevator_close', { level: currentLevel, nextLevel: targetNextLevel });
+        window.BackroomsOnlineManager.emitGameEvent?.('elevator_close', { level: currentLevel, nextLevel: targetNextLevel });
       }
 
       if (currentLevel === 0) {
@@ -10564,13 +10567,13 @@
             ctrl.active = false;
             refreshInventoryUI();
             if (window.BackroomsOnlineManager) {
-              window.BackroomsOnlineManager.emitGameEvent('fuse_inserted', {
+              window.BackroomsOnlineManager.emitGameEvent?.('fuse_inserted', {
                 level: currentLevel,
                 slotIdx: ctrl.slotIdx,
                 installedTotal: instTotal
               });
               if (instTotal >= 4) {
-                window.BackroomsOnlineManager.emitGameEvent('power_on', { level: currentLevel });
+                window.BackroomsOnlineManager.emitGameEvent?.('power_on', { level: currentLevel });
               }
             }
           }
@@ -11024,7 +11027,7 @@
       refreshInventoryUI();
       if (window.BackroomsOnlineManager) {
         const fuseIdx = worldLooseFuses.indexOf(lf);
-        window.BackroomsOnlineManager.emitGameEvent('fuse_collected', { fuseIdx, level: currentLevel });
+        window.BackroomsOnlineManager.emitGameEvent?.('fuse_collected', { fuseIdx, level: currentLevel });
       }
     }
 
@@ -11062,7 +11065,7 @@
         cr.lidTargetRad = -Math.PI * 0.58;
         sound.playMechanismSound('crate_open', 1.0);
         if (window.BackroomsOnlineManager) {
-          window.BackroomsOnlineManager.emitGameEvent('door_open', { target: 'crate', crateIdx, isOpen: true, isLooted: false });
+          window.BackroomsOnlineManager.emitGameEvent?.('door_open', { target: 'crate', crateIdx, isOpen: true, isLooted: false });
         }
       } else {
         cr.isLooted = true;
@@ -11072,7 +11075,7 @@
         sound.playUiBeep(680, 0.05);
         refreshInventoryUI();
         if (window.BackroomsOnlineManager) {
-          window.BackroomsOnlineManager.emitGameEvent('door_close', { target: 'crate_looted', crateIdx, isOpen: true, isLooted: true });
+          window.BackroomsOnlineManager.emitGameEvent?.('door_close', { target: 'crate_looted', crateIdx, isOpen: true, isLooted: true });
         }
       }
     }
@@ -11221,7 +11224,7 @@
       updateLevel2BlueOutlines();
       refreshInventoryUI();
       if (window.BackroomsOnlineManager && window.BackroomsOnlineManager.currentRoomId) {
-        window.BackroomsOnlineManager.onLocalLevelChanged(currentLevel);
+        window.BackroomsOnlineManager.onLocalLevelChanged?.(currentLevel);
       }
     }
     window.loadLevel = loadLevel;
@@ -11338,50 +11341,44 @@
       document.body.classList.add('menu-blur');
     }
 
-    // Привязка кнопок ЭЛТ-монитора
-    document.getElementById('btnSingleplayer').addEventListener('click', () => {
+    function startSingleplayerGame() {
       loadLevel(0);
       startGameSession(false, 'ОДИНОЧНАЯ ИГРА: УРОВЕНЬ 0');
-    });
-    document.getElementById('btnStartLevel1').addEventListener('click', () => {
+    }
+    function startLevel1Game() {
       loadLevel(1);
       startGameSession(false, 'ОДИНОЧНАЯ ИГРА: УРОВЕНЬ 1');
-    });
+    }
+    function startLevel2Game() {
+      loadLevel(2);
+      startGameSession(false, 'ОДИНОЧНАЯ ИГРА: УРОВЕНЬ 2 (PIPE DREAMS)');
+    }
+    window.startSingleplayerGame = startSingleplayerGame;
+    window.startLevel1Game = startLevel1Game;
+    window.startLevel2Game = startLevel2Game;
+
+    // Привязка кнопок ЭЛТ-монитора
+    document.getElementById('btnSingleplayer').addEventListener('click', startSingleplayerGame);
+    document.getElementById('btnStartLevel1').addEventListener('click', startLevel1Game);
     const btnStartLevel2 = document.getElementById('btnStartLevel2');
     if (btnStartLevel2) {
-      btnStartLevel2.addEventListener('click', () => {
-        loadLevel(2);
-        startGameSession(false, 'ОДИНОЧНАЯ ИГРА: УРОВЕНЬ 2 (PIPE DREAMS)');
-      });
+      btnStartLevel2.addEventListener('click', startLevel2Game);
     }
     document.getElementById('btnJoinGame').addEventListener('click', () => {
       switchMenuSubview('join');
-      if (window.BackroomsOnlineManager) window.BackroomsOnlineManager.refreshRoomListUI();
+      if (window.BackroomsOnlineManager) window.BackroomsOnlineManager.renderRoomsList?.();
     });
     document.getElementById('btnCreateLobby').addEventListener('click', () => {
       switchMenuSubview('lobby');
-      if (window.BackroomsOnlineManager) window.BackroomsOnlineManager.updateMenuUI();
+      if (window.BackroomsOnlineManager) window.BackroomsOnlineManager.renderLobbyUI?.();
     });
     document.getElementById('btnOpenSettings').addEventListener('click', () => switchMenuSubview('settings'));
-
-    let selectedLobbyStartLevel = 0;
-    const btnToggleLobbyLevel = document.getElementById('btnToggleLobbyLevel');
-    if (btnToggleLobbyLevel) {
-      btnToggleLobbyLevel.addEventListener('click', (e) => {
-        sound.playUiBeep();
-        selectedLobbyStartLevel = (selectedLobbyStartLevel + 1) % 3;
-        e.currentTarget.textContent = selectedLobbyStartLevel === 2 ? 'УРОВЕНЬ 2' : (selectedLobbyStartLevel === 1 ? 'УРОВЕНЬ 1' : 'УРОВЕНЬ 0');
-        if (window.BackroomsOnlineManager) {
-          window.BackroomsOnlineManager.setLobbyLevel(selectedLobbyStartLevel);
-        }
-      });
-    }
 
     const btnGoToLobbyFromJoin = document.getElementById('btnGoToLobbyFromJoin');
     if (btnGoToLobbyFromJoin) {
       btnGoToLobbyFromJoin.addEventListener('click', () => {
         switchMenuSubview('lobby');
-        if (window.BackroomsOnlineManager) window.BackroomsOnlineManager.createRoomFromUI();
+        if (window.BackroomsOnlineManager) window.BackroomsOnlineManager.createRoom?.();
       });
     }
 
@@ -11389,63 +11386,9 @@
     if (btnOpenJoinFromLobby) {
       btnOpenJoinFromLobby.addEventListener('click', () => {
         switchMenuSubview('join');
-        if (window.BackroomsOnlineManager) window.BackroomsOnlineManager.refreshRoomListUI();
+        if (window.BackroomsOnlineManager) window.BackroomsOnlineManager.renderRoomsList?.();
       });
     }
-
-    const btnCreateRoomAction = document.getElementById('btnCreateRoomAction');
-    if (btnCreateRoomAction) {
-      btnCreateRoomAction.addEventListener('click', () => {
-        sound.playUiBeep(640, 0.05);
-        if (window.BackroomsOnlineManager) window.BackroomsOnlineManager.createRoomFromUI();
-      });
-    }
-
-    const btnCopyRoomCode = document.getElementById('btnCopyRoomCode');
-    if (btnCopyRoomCode) {
-      btnCopyRoomCode.addEventListener('click', () => {
-        sound.playUiBeep(680, 0.05);
-        if (window.BackroomsOnlineManager) window.BackroomsOnlineManager.copyRoomCode();
-      });
-    }
-
-    const btnLeaveRoomAction = document.getElementById('btnLeaveRoomAction');
-    if (btnLeaveRoomAction) {
-      btnLeaveRoomAction.addEventListener('click', () => {
-        sound.playUiBeep(420, 0.06);
-        if (window.BackroomsOnlineManager) window.BackroomsOnlineManager.leaveRoom(true);
-      });
-    }
-
-    const btnRefreshRoomsList = document.getElementById('btnRefreshRoomsList');
-    if (btnRefreshRoomsList) {
-      btnRefreshRoomsList.addEventListener('click', () => {
-        sound.playUiBeep(560, 0.04);
-        if (window.BackroomsOnlineManager) window.BackroomsOnlineManager.refreshRoomListUI();
-      });
-    }
-
-    const btnJoinByCode = document.getElementById('btnJoinByCode');
-    if (btnJoinByCode) {
-      btnJoinByCode.addEventListener('click', () => {
-        sound.playUiBeep(620, 0.05);
-        const codeInput = document.getElementById('inputJoinRoomCode')?.value || '';
-        const nameVal = document.getElementById('inputJoinPlayerName')?.value || '';
-        if (window.BackroomsOnlineManager) {
-          window.BackroomsOnlineManager.joinRoomByCode(codeInput, nameVal);
-        }
-      });
-    }
-
-    document.getElementById('btnStartCoopLobby').addEventListener('click', () => {
-      sound.playUiBeep(720, 0.06);
-      if (window.BackroomsOnlineManager) {
-        window.BackroomsOnlineManager.startGameFromLobbyButton(selectedLobbyStartLevel);
-      } else {
-        loadLevel(selectedLobbyStartLevel);
-        startGameSession(partnerEnabled, 'ОДИНОЧНАЯ СЕССИЯ');
-      }
-    });
 
     document.querySelectorAll('[data-back]').forEach(btn => {
       btn.addEventListener('click', () => switchMenuSubview(btn.getAttribute('data-back')));
@@ -12349,8 +12292,8 @@
         document.getElementById('timecode').textContent = `${hh}:${mm}:${ss}`;
       }
 
-      if (window.BackroomsOnlineManager) {
-        window.BackroomsOnlineManager.updateFrame(elapsed, dt, currentAnimMode);
+      if (window.BackroomsOnlineManager && currentLevel !== 0) {
+        window.BackroomsOnlineManager.updateRemotePlayersRender?.(dt);
       }
       renderer.render(scene, camera);
     }
@@ -12564,2547 +12507,1012 @@
       loadLevel(0);
       animate();
     };
-  </script>
 
-  <!-- ==================== НОВАЯ ОНЛАЙН-АРХИТЕКТУРА (МИГРИРОВАНА ИЗ ФАЙЛА №2 И АДАПТИРОВАНА ПОД BACKROOMS) ==================== -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import {
-      getDatabase,
-      ref,
-      set,
-      update,
-      onValue,
-      onDisconnect,
-      remove,
-      get
-    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+/* ============================================================================
+   BACKROOMS ONLINE MANAGER (НА БАЗЕ АРХИТЕКТУРЫ ЗОМБИ.HTML: WSS MQTT + BROADCAST)
+   ============================================================================ */
+(function() {
+  const CLOUD_WS_BROKERS = [
+    'wss://broker.emqx.io:8084/mqtt',
+    'wss://broker.hivemq.com:8884/mqtt',
+    'wss://test.mosquitto.org:8081/mqtt'
+  ];
+  const CLOUD_TOPIC_PREFIX = 'backrooms_et_coop_v3';
+  const MAX_ROOM_PLAYERS = 4;
+  const SYNC_INTERVAL_MS = 65;
+  const PLAYER_TIMEOUT_MS = 10000;
 
-    // =========================================================================
-    // 1. СЕТЕВЫЕ КОНСТАНТЫ И КОНФИГУРАЦИЯ (АДАПТИРОВАНО ИЗ ФАЙЛА №2)
-    // =========================================================================
-    const firebaseConfig = {
-      apiKey: "AIzaSyBGHh-Q53rZqACtydlhja2bo2DalKmCP4Y",
-      authDomain: "blackrooms-1bc41.firebaseapp.com",
-      databaseURL: "https://blackrooms-1bc41-default-rtdb.firebaseio.com",
-      projectId: "blackrooms-1bc41",
-      storageBucket: "blackrooms-1bc41.firebasestorage.app",
-      messagingSenderId: "306355002026",
-      appId: "1:306355002026:web:1bf1ec92848ff1f8c3ced3"
-    };
-
-    const ONLINE_SYNC_INTERVAL_MS = 65;   // ~15.4 обновлений/сек (оптимальный сетевой трафик)
-    const HEARTBEAT_INTERVAL_MS = 3000;   // Heartbeat присутствия каждые 3 сек
-    const PLAYER_TIMEOUT_MS = 10000;      // 10 сек таймаут неактивного/отключившегося игрока
-    const MAX_ROOM_PLAYERS = 4;           // Максимум игроков в кооп-комнате Backrooms
-    const SNAPSHOT_BUFFER_MS = 85;        // 85 мс буфер интерполяции для плавного движения без рывков
-    const TELEPORT_SNAP_DIST = 28.0;      // Снап только при глобальном перемещении (возрождение / смена уровня)
-
-    // Публичные WebSocket MQTT брокеры из эталонной системы Файла №2 для мгновенной
-    // кросс-девайс синхронизации (Android + iOS + PC) параллельно с Firebase RTDB
-    const CLOUD_WS_BROKERS = [
-      "wss://broker.emqx.io:8084/mqtt",
-      "wss://broker.hivemq.com:8884/mqtt",
-      "wss://test.mosquitto.org:8081/mqtt"
-    ];
-    const CLOUD_TOPIC_PREFIX = "backrooms_et_v3";
-
-    // =========================================================================
-    // 2. MULTI-TAB AWARE PERSISTENT IDENTITY & NICKNAME VALIDATION (ИЗ ФАЙЛА №2)
-    // =========================================================================
-    // 1) При перезагрузке страницы (F5) сохраняет тот же самый UID и никнейм — не создаёт дубликатов!
-    // 2) При открытии ВТОРОЙ вкладки в том же браузере выдаёт второй вкладке отдельный UID,
-    //    чтобы две вкладки видели друг друга как два разных игрока.
-    const TAB_SESSION_ID = (function() {
-      try {
-        let tid = sessionStorage.getItem("br_tab_session_id");
-        if (!tid) {
-          tid = "tab_" + Date.now().toString(36) + "_" + Math.random().toString(36).substring(2, 7);
-          sessionStorage.setItem("br_tab_session_id", tid);
-        }
-        return tid;
-      } catch (e) {
-        return "tab_" + Math.random().toString(36).substring(2, 9);
+  // 1. Защита от совпадения UID в разных вкладках одного браузера (как в зомби.html)
+  const TAB_SESSION_ID = (function() {
+    try {
+      let tid = sessionStorage.getItem('br_tab_session_id');
+      if (!tid) {
+        tid = 'tab_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 7);
+        sessionStorage.setItem('br_tab_session_id', tid);
       }
-    })();
+      return tid;
+    } catch (e) {
+      return 'tab_' + Math.random().toString(36).substring(2, 9);
+    }
+  })();
 
-    function isPrimaryUidActiveInAnotherTab(primaryUid) {
+  function renewTabLease(myUid) {
+    try {
+      const raw = localStorage.getItem('br_active_tab_leases');
+      const leases = raw ? JSON.parse(raw) : {};
+      const now = Date.now();
+      for (const tId in leases) {
+        if (now - (leases[tId].ts || 0) > 12000) delete leases[tId];
+      }
+      leases[TAB_SESSION_ID] = { uid: myUid, ts: now };
+      localStorage.setItem('br_active_tab_leases', JSON.stringify(leases));
+    } catch (e) {}
+  }
+
+  function isPrimaryUidUsedByOtherTab(primaryUid) {
+    try {
+      const raw = localStorage.getItem('br_active_tab_leases');
+      if (!raw) return false;
+      const leases = JSON.parse(raw);
+      const now = Date.now();
+      for (const tId in leases) {
+        if (tId !== TAB_SESSION_ID && leases[tId] && leases[tId].uid === primaryUid) {
+          if (now - (leases[tId].ts || 0) < 6500) return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function resolvePlayerUid() {
+    try {
+      const sessionUid = sessionStorage.getItem('br_session_uid');
+      if (sessionUid && sessionUid.length >= 6) {
+        renewTabLease(sessionUid);
+        return sessionUid;
+      }
+      let primaryUid = localStorage.getItem('br_stable_uid');
+      if (!primaryUid || primaryUid.length < 6) {
+        primaryUid = 'br_' + Date.now().toString(36).slice(-4) + '_' + Math.random().toString(36).substring(2, 6);
+        localStorage.setItem('br_stable_uid', primaryUid);
+      }
+      if (isPrimaryUidUsedByOtherTab(primaryUid)) {
+        const secUid = 'br_' + Date.now().toString(36).slice(-4) + '_' + Math.random().toString(36).substring(2, 6);
+        sessionStorage.setItem('br_session_uid', secUid);
+        renewTabLease(secUid);
+        return secUid;
+      }
+      sessionStorage.setItem('br_session_uid', primaryUid);
+      renewTabLease(primaryUid);
+      return primaryUid;
+    } catch (e) {
+      return 'br_' + Math.random().toString(36).substring(2, 9);
+    }
+  }
+
+  // 2. Встроенный MQTT 3.1.1 поверх WebSocket клиент из зомби.html (работает без ключей Firebase)
+  class NativeWsMqttClient {
+    constructor(onMessageCallback, onStatusChangeCallback) {
+      this.ws = null;
+      this.connected = false;
+      this.brokerIdx = 0;
+      this.onMessage = onMessageCallback;
+      this.onStatusChange = onStatusChangeCallback;
+      this.pingTimer = null;
+      this.reconnectTimer = null;
+      this.packetId = 1;
+      this.rxBuffer = new Uint8Array(0);
+      this.lastPingSentMs = 0;
+      this.rttMs = 34;
+      this.subscriptions = new Set();
+    }
+
+    connect(clientId) {
+      this.clientId = clientId || ('br_' + Math.random().toString(36).substring(2, 10));
+      this.cleanupSocket();
+      if (!navigator.onLine) return;
+
+      const url = CLOUD_WS_BROKERS[this.brokerIdx % CLOUD_WS_BROKERS.length];
       try {
-        const raw = localStorage.getItem("br_active_tab_leases");
-        if (!raw) return false;
-        const leases = JSON.parse(raw);
-        const now = Date.now();
-        for (const tId in leases) {
-          if (tId !== TAB_SESSION_ID && leases[tId] && leases[tId].uid === primaryUid) {
-            if (now - (leases[tId].ts || 0) < 6000) {
-              return true;
-            }
+        const ws = new WebSocket(url, 'mqtt');
+        ws.binaryType = 'arraybuffer';
+        this.ws = ws;
+
+        const connTimeout = setTimeout(() => {
+          if (!this.connected && this.ws === ws) {
+            try { ws.close(); } catch (e) {}
           }
-        }
-        return false;
-      } catch (e) {
-        return false;
-      }
-    }
+        }, 5000);
 
-    function renewTabLease(myUid) {
-      try {
-        const raw = localStorage.getItem("br_active_tab_leases");
-        const leases = raw ? JSON.parse(raw) : {};
-        const now = Date.now();
-        for (const tId in leases) {
-          if (now - (leases[tId]?.ts || 0) > 12000) delete leases[tId];
-        }
-        leases[TAB_SESSION_ID] = { uid: myUid, ts: now };
-        localStorage.setItem("br_active_tab_leases", JSON.stringify(leases));
-      } catch (e) {}
-    }
+        ws.onopen = () => {
+          if (this.ws !== ws) return;
+          this.sendConnectPacket(this.clientId);
+        };
 
-    function releaseTabLease() {
-      try {
-        const raw = localStorage.getItem("br_active_tab_leases");
-        if (!raw) return;
-        const leases = JSON.parse(raw);
-        delete leases[TAB_SESSION_ID];
-        localStorage.setItem("br_active_tab_leases", JSON.stringify(leases));
-      } catch (e) {}
-    }
+        ws.onmessage = (ev) => {
+          if (this.ws !== ws || !ev.data) return;
+          clearTimeout(connTimeout);
+          this.handleIncomingBytes(new Uint8Array(ev.data));
+        };
 
-    let isSecondaryTabInstance = false;
+        ws.onerror = () => {};
 
-    function resolveInitialUid() {
-      try {
-        const sessionUid = sessionStorage.getItem("br_session_uid");
-        if (sessionUid && sessionUid.startsWith("br_player_")) {
-          isSecondaryTabInstance = (sessionStorage.getItem("br_is_secondary_tab") === "1");
-          renewTabLease(sessionUid);
-          return sessionUid;
-        }
-
-        let primaryUid = localStorage.getItem("br_stable_uid");
-        if (!primaryUid || !primaryUid.startsWith("br_player_")) {
-          primaryUid = "br_player_" + Date.now().toString(36).slice(-4) + "_" + Math.random().toString(36).substring(2, 7);
-          localStorage.setItem("br_stable_uid", primaryUid);
-        }
-
-        if (isPrimaryUidActiveInAnotherTab(primaryUid)) {
-          isSecondaryTabInstance = true;
-          const secUid = "br_player_" + Date.now().toString(36).slice(-4) + "_" + Math.random().toString(36).substring(2, 7);
-          sessionStorage.setItem("br_session_uid", secUid);
-          sessionStorage.setItem("br_is_secondary_tab", "1");
-          renewTabLease(secUid);
-          return secUid;
-        } else {
-          isSecondaryTabInstance = false;
-          sessionStorage.setItem("br_session_uid", primaryUid);
-          sessionStorage.setItem("br_is_secondary_tab", "0");
-          renewTabLease(primaryUid);
-          return primaryUid;
-        }
-      } catch (e) {
-        return "br_player_" + Math.random().toString(36).substring(2, 9);
-      }
-    }
-
-    const initialResolvedUid = resolveInitialUid();
-
-    function sanitizeNickname(raw, fallbackUid) {
-      const cleaned = String(raw || "").trim().replace(/[<>\\/"'`;]/g, "").slice(0, 16);
-      if (cleaned.length >= 2) return cleaned;
-      const suffix = String(fallbackUid || initialResolvedUid).slice(-4).toUpperCase();
-      return `Stalker_${suffix}`;
-    }
-
-    function getOrCreateNickname(myUid) {
-      try {
-        const sessionNick = sessionStorage.getItem("br_session_nickname");
-        if (sessionNick && sessionNick.trim().length >= 2) {
-          return sanitizeNickname(sessionNick, myUid);
-        }
-        if (!isSecondaryTabInstance) {
-          const saved = localStorage.getItem("br_player_nickname");
-          if (saved && saved.trim().length >= 2) {
-            const clean = sanitizeNickname(saved, myUid);
-            sessionStorage.setItem("br_session_nickname", clean);
-            return clean;
+        ws.onclose = () => {
+          clearTimeout(connTimeout);
+          if (this.ws === ws) {
+            const wasConnected = this.connected;
+            this.connected = false;
+            if (wasConnected && this.onStatusChange) this.onStatusChange(false);
+            this.brokerIdx = (this.brokerIdx + 1) % CLOUD_WS_BROKERS.length;
+            this.scheduleReconnect();
           }
-        }
-        const def = sanitizeNickname("", myUid);
-        sessionStorage.setItem("br_session_nickname", def);
-        if (!isSecondaryTabInstance) {
-          localStorage.setItem("br_player_nickname", def);
-        }
-        return def;
+        };
       } catch (e) {
-        return sanitizeNickname("", myUid);
+        this.brokerIdx = (this.brokerIdx + 1) % CLOUD_WS_BROKERS.length;
+        this.scheduleReconnect();
       }
     }
 
-    // =========================================================================
-    // 3. ZERO-DEPENDENCY MQTT 3.1.1 OVER WEBSOCKETS CLIENT (ИЗ ФАЙЛА №2)
-    // =========================================================================
-    class NativeWsMqttClient {
-      constructor(onMessageCallback, onStatusChangeCallback) {
+    scheduleReconnect() {
+      if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = setTimeout(() => {
+        if (!this.connected && navigator.onLine) this.connect(this.clientId);
+      }, 2200);
+    }
+
+    cleanupSocket() {
+      if (this.pingTimer) { clearInterval(this.pingTimer); this.pingTimer = null; }
+      if (this.reconnectTimer) { clearTimeout(this.reconnectTimer); this.reconnectTimer = null; }
+      if (this.ws) {
+        const old = this.ws;
         this.ws = null;
-        this.connected = false;
-        this.brokerIdx = 0;
-        this.onMessage = onMessageCallback;
-        this.onStatusChange = onStatusChangeCallback;
-        this.pingTimer = null;
-        this.reconnectTimer = null;
-        this.packetId = 1;
-        this.rxBuffer = new Uint8Array(0);
-        this.lastPingSentMs = 0;
-        this.rttMs = 34;
-        this.subscriptions = new Set();
+        old.onopen = old.onmessage = old.onerror = old.onclose = null;
+        try { old.close(); } catch (e) {}
       }
+      this.connected = false;
+      this.rxBuffer = new Uint8Array(0);
+    }
 
-      connect(clientId) {
-        this.clientId = clientId || ("br_" + Math.random().toString(36).substring(2, 10));
-        this.cleanupSocket();
-        if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+    encodeLength(len) {
+      const out = [];
+      do {
+        let byte = len % 128;
+        len = Math.floor(len / 128);
+        if (len > 0) byte |= 128;
+        out.push(byte);
+      } while (len > 0);
+      return out;
+    }
 
-        const url = CLOUD_WS_BROKERS[this.brokerIdx % CLOUD_WS_BROKERS.length];
-        try {
-          const ws = new WebSocket(url, "mqtt");
-          ws.binaryType = "arraybuffer";
-          this.ws = ws;
+    encodeUtf8(str) { return new TextEncoder().encode(str); }
 
-          const connTimeout = setTimeout(() => {
-            if (!this.connected && this.ws === ws) {
-              try { ws.close(); } catch (e) {}
-            }
-          }, 5000);
-
-          ws.onopen = () => {
-            if (this.ws !== ws) return;
-            this.sendConnectPacket(this.clientId);
-          };
-
-          ws.onmessage = (ev) => {
-            if (this.ws !== ws || !ev.data) return;
-            clearTimeout(connTimeout);
-            this.handleIncomingBytes(new Uint8Array(ev.data));
-          };
-
-          ws.onerror = () => {};
-
-          ws.onclose = () => {
-            clearTimeout(connTimeout);
-            if (this.ws === ws) {
-              const wasConnected = this.connected;
-              this.connected = false;
-              if (wasConnected && this.onStatusChange) this.onStatusChange(false);
-              this.brokerIdx = (this.brokerIdx + 1) % CLOUD_WS_BROKERS.length;
-              this.scheduleReconnect();
-            }
-          };
-        } catch (e) {
-          this.brokerIdx = (this.brokerIdx + 1) % CLOUD_WS_BROKERS.length;
-          this.scheduleReconnect();
-        }
+    sendRaw(bytes) {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        try { this.ws.send(bytes); } catch (e) {}
       }
+    }
 
-      scheduleReconnect() {
-        if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-        this.reconnectTimer = setTimeout(() => {
-          if (!this.connected && (typeof navigator === "undefined" || navigator.onLine !== false)) {
-            this.connect(this.clientId);
-          }
-        }, 2400);
-      }
+    sendConnectPacket(clientId) {
+      const cidBytes = this.encodeUtf8(clientId);
+      const varHeader = [0x00, 0x04, 77, 81, 84, 84, 0x04, 0x02, 0x00, 0x1e];
+      const payloadLen = 2 + cidBytes.length;
+      const remLen = this.encodeLength(varHeader.length + payloadLen);
+      const pkt = new Uint8Array(1 + remLen.length + varHeader.length + payloadLen);
+      let idx = 0;
+      pkt[idx++] = 0x10;
+      remLen.forEach(b => { pkt[idx++] = b; });
+      varHeader.forEach(b => { pkt[idx++] = b; });
+      pkt[idx++] = (cidBytes.length >> 8) & 0xff;
+      pkt[idx++] = cidBytes.length & 0xff;
+      pkt.set(cidBytes, idx);
+      this.sendRaw(pkt);
+    }
 
-      cleanupSocket() {
-        if (this.pingTimer) {
-          clearInterval(this.pingTimer);
-          this.pingTimer = null;
-        }
-        if (this.reconnectTimer) {
-          clearTimeout(this.reconnectTimer);
-          this.reconnectTimer = null;
-        }
-        if (this.ws) {
-          const old = this.ws;
-          this.ws = null;
-          old.onopen = null;
-          old.onmessage = null;
-          old.onerror = null;
-          old.onclose = null;
-          try { old.close(); } catch (e) {}
-        }
-        this.connected = false;
-        this.rxBuffer = new Uint8Array(0);
-      }
+    subscribe(topicFilter) {
+      this.subscriptions.add(topicFilter);
+      if (!this.connected) return;
+      const tBytes = this.encodeUtf8(topicFilter);
+      const pid = (this.packetId++ & 0x7fff) || 1;
+      const bodyLen = 2 + 2 + tBytes.length + 1;
+      const remLen = this.encodeLength(bodyLen);
+      const pkt = new Uint8Array(1 + remLen.length + bodyLen);
+      let idx = 0;
+      pkt[idx++] = 0x82;
+      remLen.forEach(b => { pkt[idx++] = b; });
+      pkt[idx++] = (pid >> 8) & 0xff;
+      pkt[idx++] = pid & 0xff;
+      pkt[idx++] = (tBytes.length >> 8) & 0xff;
+      pkt[idx++] = tBytes.length & 0xff;
+      pkt.set(tBytes, idx);
+      idx += tBytes.length;
+      pkt[idx] = 0x00;
+      this.sendRaw(pkt);
+    }
 
-      encodeLength(len) {
-        const out = [];
+    publish(topic, objPayload, retain = false) {
+      if (!this.connected) return;
+      const tBytes = this.encodeUtf8(topic);
+      const pBytes = this.encodeUtf8(typeof objPayload === 'string' ? objPayload : JSON.stringify(objPayload));
+      const bodyLen = 2 + tBytes.length + pBytes.length;
+      const remLen = this.encodeLength(bodyLen);
+      const pkt = new Uint8Array(1 + remLen.length + bodyLen);
+      let idx = 0;
+      pkt[idx++] = retain ? 0x31 : 0x30;
+      remLen.forEach(b => { pkt[idx++] = b; });
+      pkt[idx++] = (tBytes.length >> 8) & 0xff;
+      pkt[idx++] = tBytes.length & 0xff;
+      pkt.set(tBytes, idx);
+      idx += tBytes.length;
+      pkt.set(pBytes, idx);
+      this.sendRaw(pkt);
+    }
+
+    handleIncomingBytes(chunk) {
+      const merged = new Uint8Array(this.rxBuffer.length + chunk.length);
+      merged.set(this.rxBuffer, 0);
+      merged.set(chunk, this.rxBuffer.length);
+      this.rxBuffer = merged;
+
+      while (this.rxBuffer.length >= 2) {
+        const headerByte = this.rxBuffer[0];
+        const pktType = headerByte >> 4;
+        let multiplier = 1, value = 0, idx = 1, encodedByte = 0;
         do {
-          let byte = len % 128;
-          len = Math.floor(len / 128);
-          if (len > 0) byte |= 128;
-          out.push(byte);
-        } while (len > 0);
-        return out;
-      }
+          if (idx >= this.rxBuffer.length) return;
+          encodedByte = this.rxBuffer[idx++];
+          value += (encodedByte & 127) * multiplier;
+          multiplier *= 128;
+        } while ((encodedByte & 128) !== 0 && idx < 5);
 
-      encodeUtf8(str) {
-        return new TextEncoder().encode(str);
-      }
+        const totalPktLen = idx + value;
+        if (this.rxBuffer.length < totalPktLen) return;
+        const body = this.rxBuffer.slice(idx, totalPktLen);
+        this.rxBuffer = this.rxBuffer.slice(totalPktLen);
 
-      sendRaw(bytes) {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          try { this.ws.send(bytes); } catch (e) {}
-        }
-      }
-
-      sendConnectPacket(clientId) {
-        const cidBytes = this.encodeUtf8(clientId);
-        const varHeader = [0x00, 0x04, 77, 81, 84, 84, 0x04, 0x02, 0x00, 0x1e];
-        const payloadLen = 2 + cidBytes.length;
-        const remLen = this.encodeLength(varHeader.length + payloadLen);
-        const pkt = new Uint8Array(1 + remLen.length + varHeader.length + payloadLen);
-        let idx = 0;
-        pkt[idx++] = 0x10;
-        remLen.forEach(b => { pkt[idx++] = b; });
-        varHeader.forEach(b => { pkt[idx++] = b; });
-        pkt[idx++] = (cidBytes.length >> 8) & 0xff;
-        pkt[idx++] = cidBytes.length & 0xff;
-        pkt.set(cidBytes, idx);
-        this.sendRaw(pkt);
-      }
-
-      subscribe(topicFilter) {
-        this.subscriptions.add(topicFilter);
-        if (!this.connected) return;
-        const tBytes = this.encodeUtf8(topicFilter);
-        const pid = (this.packetId++ & 0x7fff) || 1;
-        const bodyLen = 2 + 2 + tBytes.length + 1;
-        const remLen = this.encodeLength(bodyLen);
-        const pkt = new Uint8Array(1 + remLen.length + bodyLen);
-        let idx = 0;
-        pkt[idx++] = 0x82;
-        remLen.forEach(b => { pkt[idx++] = b; });
-        pkt[idx++] = (pid >> 8) & 0xff;
-        pkt[idx++] = pid & 0xff;
-        pkt[idx++] = (tBytes.length >> 8) & 0xff;
-        pkt[idx++] = tBytes.length & 0xff;
-        pkt.set(tBytes, idx);
-        idx += tBytes.length;
-        pkt[idx] = 0x00;
-        this.sendRaw(pkt);
-      }
-
-      publish(topic, objPayload, retain = false) {
-        if (!this.connected) return;
-        const tBytes = this.encodeUtf8(topic);
-        const pBytes = this.encodeUtf8(typeof objPayload === "string" ? objPayload : JSON.stringify(objPayload));
-        const bodyLen = 2 + tBytes.length + pBytes.length;
-        const remLen = this.encodeLength(bodyLen);
-        const pkt = new Uint8Array(1 + remLen.length + bodyLen);
-        let idx = 0;
-        pkt[idx++] = retain ? 0x31 : 0x30;
-        remLen.forEach(b => { pkt[idx++] = b; });
-        pkt[idx++] = (tBytes.length >> 8) & 0xff;
-        pkt[idx++] = tBytes.length & 0xff;
-        pkt.set(tBytes, idx);
-        idx += tBytes.length;
-        pkt.set(pBytes, idx);
-        this.sendRaw(pkt);
-      }
-
-      handleIncomingBytes(chunk) {
-        const merged = new Uint8Array(this.rxBuffer.length + chunk.length);
-        merged.set(this.rxBuffer, 0);
-        merged.set(chunk, this.rxBuffer.length);
-        this.rxBuffer = merged;
-
-        while (this.rxBuffer.length >= 2) {
-          const headerByte = this.rxBuffer[0];
-          const pktType = headerByte >> 4;
-
-          let multiplier = 1;
-          let value = 0;
-          let idx = 1;
-          let encodedByte = 0;
-          do {
-            if (idx >= this.rxBuffer.length) return;
-            encodedByte = this.rxBuffer[idx++];
-            value += (encodedByte & 127) * multiplier;
-            multiplier *= 128;
-          } while ((encodedByte & 128) !== 0 && idx < 5);
-
-          const totalPktLen = idx + value;
-          if (this.rxBuffer.length < totalPktLen) return;
-
-          const body = this.rxBuffer.slice(idx, totalPktLen);
-          this.rxBuffer = this.rxBuffer.slice(totalPktLen);
-
-          if (pktType === 2) {
-            if (body.length >= 2 && body[1] === 0) {
-              this.connected = true;
-              this.subscriptions.forEach(sub => this.subscribe(sub));
-              if (this.pingTimer) clearInterval(this.pingTimer);
-              this.pingTimer = setInterval(() => {
-                this.lastPingSentMs = performance.now();
-                this.sendRaw(new Uint8Array([0xc0, 0x00]));
-              }, 4000);
-              if (this.onStatusChange) this.onStatusChange(true);
-            }
-          } else if (pktType === 13) {
-            if (this.lastPingSentMs > 0) {
-              const rtt = Math.round((performance.now() - this.lastPingSentMs) * 0.65);
-              this.rttMs = Math.max(12, Math.min(999, rtt));
-            }
-          } else if (pktType === 3) {
-            if (body.length < 2) continue;
-            const tLen = (body[0] << 8) | body[1];
-            const qos = (headerByte >> 1) & 0x03;
-            const pStart = 2 + tLen + (qos > 0 ? 2 : 0);
-            if (body.length < pStart) continue;
-            const topic = new TextDecoder().decode(body.slice(2, 2 + tLen));
-            const payloadStr = new TextDecoder().decode(body.slice(pStart));
-            if (this.onMessage) {
-              try {
-                this.onMessage(topic, JSON.parse(payloadStr));
-              } catch (e) {}
-            }
+        if (pktType === 2) {
+          if (body.length >= 2 && body[1] === 0) {
+            this.connected = true;
+            this.subscriptions.forEach(sub => this.subscribe(sub));
+            if (this.pingTimer) clearInterval(this.pingTimer);
+            this.pingTimer = setInterval(() => {
+              this.lastPingSentMs = performance.now();
+              this.sendRaw(new Uint8Array([0xc0, 0x00]));
+            }, 4000);
+            if (this.onStatusChange) this.onStatusChange(true);
+          }
+        } else if (pktType === 13) {
+          if (this.lastPingSentMs > 0) {
+            this.rttMs = Math.max(12, Math.min(999, Math.round((performance.now() - this.lastPingSentMs) * 0.65)));
+          }
+        } else if (pktType === 3) {
+          if (body.length < 2) continue;
+          const tLen = (body[0] << 8) | body[1];
+          const qos = (headerByte >> 1) & 0x03;
+          const pStart = 2 + tLen + (qos > 0 ? 2 : 0);
+          if (body.length < pStart) continue;
+          const topic = new TextDecoder().decode(body.slice(2, 2 + tLen));
+          const payloadStr = new TextDecoder().decode(body.slice(pStart));
+          if (this.onMessage) {
+            try { this.onMessage(topic, JSON.parse(payloadStr)); } catch (e) {}
           }
         }
       }
     }
+  }
 
-    // =========================================================================
-    // 4. LOCAL + CLOUD DIRECTORY STORE (КЭШ КОМНАТ И ИГРОКОВ ИЗ ФАЙЛА №2)
-    // =========================================================================
-    const LocalStore = {
-      cloudRooms: new Map(),
+  // 3. Создание 3D-бейджа с никнеймом над головой напарника в костюме Hazmat
+  function createPlayerNameSprite(nameText) {
+    const c = document.createElement('canvas');
+    c.width = 256; c.height = 64;
+    const ctx = c.getContext('2d');
+    const tex = new THREE.CanvasTexture(c);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+    sprite.scale.set(1.5, 0.38, 1);
+    sprite.position.set(0, 2.08, 0);
 
-      getMap(key) {
-        try {
-          const raw = localStorage.getItem(key);
-          return raw ? JSON.parse(raw) : {};
-        } catch (e) {
-          return {};
-        }
-      },
-      setMap(key, obj) {
-        try {
-          localStorage.setItem(key, JSON.stringify(obj));
-        } catch (e) {}
-      },
-      upsertRoom(roomId, roomData) {
-        if (!roomId || !roomData) return;
-        const existing = this.cloudRooms.get(roomId) || this.getMap("br_cloud_rooms")[roomId] || {};
-        const merged = Object.assign({}, existing, roomData);
-        if (existing.players || roomData.players) {
-          merged.players = Object.assign({}, existing.players || {}, roomData.players || {});
-        }
-        this.cloudRooms.set(roomId, merged);
-        const rooms = this.getMap("br_cloud_rooms");
-        rooms[roomId] = merged;
-        this.setMap("br_cloud_rooms", rooms);
-      },
-      upsertRoomPlayer(roomId, pUid, pData) {
-        if (!roomId || !pUid) return;
-        const rooms = this.getMap("br_cloud_rooms");
-        const r = rooms[roomId] || this.cloudRooms.get(roomId) || {};
-        if (!r.players) r.players = {};
-        if (pData === null || pData.online === false) {
-          delete r.players[pUid];
-        } else {
-          r.players[pUid] = pData;
-        }
-        if (r.meta) {
-          r.meta.updatedAt = Date.now();
-          r.meta.playerCount = Object.keys(r.players).length;
-        }
-        this.cloudRooms.set(roomId, r);
-        rooms[roomId] = r;
-        this.setMap("br_cloud_rooms", rooms);
-      },
-      getRoom(roomId) {
-        const rooms = this.getMap("br_cloud_rooms");
-        if (rooms[roomId]) {
-          this.cloudRooms.set(roomId, rooms[roomId]);
-          return rooms[roomId];
-        }
-        return this.cloudRooms.get(roomId) || null;
-      },
-      deleteRoom(roomId) {
-        this.cloudRooms.delete(roomId);
-        const rooms = this.getMap("br_cloud_rooms");
-        delete rooms[roomId];
-        this.setMap("br_cloud_rooms", rooms);
-      },
-      getAllRooms() {
-        const merged = Object.assign({}, this.getMap("br_cloud_rooms"));
-        this.cloudRooms.forEach((r, k) => {
-          merged[k] = Object.assign({}, merged[k] || {}, r);
-        });
-        return merged;
-      }
-    };
-
-    // =========================================================================
-    // 5. REMOTE PLAYER INSTANCE (OBJECT REUSE + SNAPSHOT INTERPOLATION ИЗ ФАЙЛА №2)
-    // =========================================================================
-    function drawOverheadNameTag(canvas, nickname, isHostFlag = false, levelNum = 0) {
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, 256, 80);
-
-      ctx.fillStyle = "rgba(6, 10, 24, 0.85)";
-      ctx.fillRect(8, 8, 240, 64);
-      ctx.strokeStyle = isHostFlag ? "#4ade80" : "#facc15";
+    function updateName(newName) {
+      ctx.clearRect(0, 0, 256, 64);
+      ctx.fillStyle = 'rgba(5, 12, 48, 0.82)';
+      ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 3;
-      ctx.strokeRect(8, 8, 240, 64);
-
-      ctx.fillStyle = isHostFlag ? "#4ade80" : "#93c5fd";
-      ctx.font = "bold 14px monospace";
-      ctx.textAlign = "center";
-      ctx.fillText(isHostFlag ? `[HOST • LVL ${levelNum}]` : `[LVL ${levelNum}]`, 128, 28);
-
-      ctx.fillStyle = "#fef08a";
-      ctx.font = "bold 21px monospace";
-      ctx.fillText(String(nickname || "Stalker").slice(0, 15), 128, 56);
+      ctx.fillRect(8, 8, 240, 48);
+      ctx.strokeRect(8, 8, 240, 48);
+      ctx.font = 'bold 22px monospace';
+      ctx.fillStyle = '#fef08a';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(('🟢 ' + (newName || 'Stalker')).slice(0, 18), 128, 32);
+      tex.needsUpdate = true;
     }
+    updateName(nameText);
+    return { sprite, updateName };
+  }
 
-    function createRemotePlayerInstance(uid, initData, isHostFlag = false) {
-      const g = window.__backroomsGame;
-      if (!g) return null;
+  // 4. Основной менеджер кооператива Backrooms
+  const BackroomsOnlineManager = {
+    uid: resolvePlayerUid(),
+    nickname: localStorage.getItem('br_player_nick') || ('Stalker' + Math.floor(100 + Math.random() * 899)),
+    mqttClient: null,
+    localBroadcast: null,
+    connected: false,
+    currentRoomId: null,
+    isHost: false,
+    lobbyLevel: 0,
+    roomState: 'waiting', // 'waiting' | 'playing'
+    hostName: '—',
+    roomsCatalog: new Map(),
+    roomPlayersMeta: new Map(),
+    remotePlayers: new Map(), // uid -> { rig, nameTag, targetPos, currentPos, targetYaw, currentYaw, lastUpdateMs, ... }
+    syncedMonsters: null,
+    lastSyncSentMs: 0,
+    lastMonsterSyncSentMs: 0,
 
-      // Создаём 3D-модель исследователя Hazmat MK-IV ровно один раз (Object Reuse!)
-      const rig = g.createExplorerRig();
-      const npCanvas = document.createElement("canvas");
-      npCanvas.width = 256;
-      npCanvas.height = 80;
-      const npTex = new THREE.CanvasTexture(npCanvas);
-      const nameSprite = new THREE.Sprite(
-        new THREE.SpriteMaterial({ map: npTex, transparent: true, depthTest: false })
-      );
-      nameSprite.scale.set(1.32, 0.41, 1);
-      nameSprite.position.set(0, 2.14, 0);
-      rig.root.add(nameSprite);
+    init() {
+      // Синхронизируем поля ввода ника
+      const joinNickInput = document.getElementById('inputJoinPlayerName');
+      const hostNickInput = document.getElementById('inputHostPlayerName');
+      if (joinNickInput) {
+        joinNickInput.value = this.nickname;
+        joinNickInput.addEventListener('input', () => this.setNickname(joinNickInput.value));
+      }
+      if (hostNickInput) {
+        hostNickInput.value = this.nickname;
+        hostNickInput.addEventListener('input', () => this.setNickname(hostNickInput.value));
+      }
 
-      // 3D-луч фонарика удалённого игрока
-      const peerSpot = new THREE.SpotLight(0xfffbe6, 2.6, 26, Math.PI / 5.5, 0.5, 1.4);
-      peerSpot.position.set(0, 1.38, 0.22);
-      const peerTarget = new THREE.Object3D();
-      peerTarget.position.set(0, 1.25, 8.0);
-      rig.root.add(peerSpot);
-      rig.root.add(peerTarget);
-      peerSpot.target = peerTarget;
+      const uidLabel = document.getElementById('onlineUidJoinLabel');
+      if (uidLabel) uidLabel.textContent = this.uid;
 
-      const startX = (initData.position && typeof initData.position.x === "number") ? initData.position.x : (typeof initData.x === "number" ? initData.x : 1.8);
-      const startY = (initData.position && typeof initData.position.y === "number") ? initData.position.y : (typeof initData.y === "number" ? initData.y : 0);
-      const startZ = (initData.position && typeof initData.position.z === "number") ? initData.position.z : (typeof initData.z === "number" ? initData.z : 1.8);
-      const startYaw = (initData.rotation && typeof initData.rotation.yaw === "number") ? initData.rotation.yaw : (typeof initData.yaw === "number" ? initData.yaw : 0);
-      const startPitch = (initData.rotation && typeof initData.rotation.pitch === "number") ? initData.rotation.pitch : (typeof initData.pitch === "number" ? initData.pitch : 0);
-      const initLevel = Number(initData.level ?? 0);
-      const displayNick = initData.nickname || initData.name || "Stalker";
+      // BroadcastChannel для мгновенной связи между вкладками одного браузера
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          this.localBroadcast = new BroadcastChannel('backrooms_et_coop_channel');
+          this.localBroadcast.onmessage = (ev) => {
+            if (ev && ev.data) this.handleEnvelope(ev.data.topic, ev.data.payload);
+          };
+        }
+      } catch (e) {}
 
-      drawOverheadNameTag(npCanvas, displayNick, isHostFlag, initLevel);
-      npTex.needsUpdate = true;
-
-      rig.root.position.set(startX, 0, startZ);
-      rig.root.rotation.y = startYaw + Math.PI;
-      rig.root.scale.setScalar(0.2); // Плавное появление модели при спавне
-      g.scene.add(rig.root);
-
-      const instance = {
-        uid,
-        rig,
-        npCanvas,
-        npTex,
-        nameSprite,
-        peerSpot,
-        peerTarget,
-        nickname: displayNick,
-        isHostBadge: Boolean(isHostFlag),
-        level: initLevel,
-        moveState: initData.moveState || initData.state || "idle",
-        animState: initData.animState || initData.anim || "idle",
-        crouching: Boolean(initData.crouching || initData.crouch),
-        sprinting: Boolean(initData.sprinting || initData.sprint),
-        flashlight: initData.flashlight !== false,
-        hidden: Boolean(initData.hidden),
-        alive: initData.alive !== false,
-        spawnFade: 0.2,
-        currentPos: new THREE.Vector3(startX, startY, startZ),
-        targetPos: new THREE.Vector3(startX, startY, startZ),
-        velocityVec: new THREE.Vector3(0, 0, 0),
-        snapshots: [],
-        currentYaw: startYaw,
-        targetYaw: startYaw,
-        currentPitch: startPitch,
-        targetPitch: startPitch,
-        lastUpdateMs: Date.now(),
-        lastPacketTs: 0,
-
-        // Для обратной совместимости с тестами и внешними проверками
-        get currentX() { return this.currentPos.x; },
-        get currentY() { return this.currentPos.y; },
-        get currentZ() { return this.currentPos.z; },
-        get targetX() { return this.targetPos.x; },
-        get targetY() { return this.targetPos.y; },
-        get targetZ() { return this.targetPos.z; },
-
-        updateFromNetwork(data, recvMs = Date.now(), isHostNow = false) {
-          this.lastUpdateMs = recvMs;
-          const pktTs = Number(data.timestamp || data.clientTs || data.lastSeen || 0);
-          if (pktTs > 0 && this.lastPacketTs > pktTs) {
-            return; // Отбрасываем устаревшие пакеты, пришедшие не по порядку
+      // Загружаем закешированные комнаты из localStorage
+      try {
+        const cached = JSON.parse(localStorage.getItem('br_cached_rooms') || '{}');
+        Object.keys(cached).forEach(code => {
+          if (Date.now() - (cached[code].updatedAtMs || 0) < 600000) {
+            this.roomsCatalog.set(code, cached[code]);
           }
-          if (pktTs > 0) this.lastPacketTs = pktTs;
+        });
+      } catch (e) {}
 
-          const nx = (data.position && typeof data.position.x === "number") ? data.position.x : data.x;
-          const ny = (data.position && typeof data.position.y === "number") ? data.position.y : (data.y ?? 0);
-          const nz = (data.position && typeof data.position.z === "number") ? data.position.z : data.z;
-          const vx = (data.velocity && typeof data.velocity.x === "number") ? data.velocity.x : (data.vx || 0);
-          const vy = (data.velocity && typeof data.velocity.y === "number") ? data.velocity.y : (data.vy || 0);
-          const vz = (data.velocity && typeof data.velocity.z === "number") ? data.velocity.z : (data.vz || 0);
-          const nyaw = (data.rotation && typeof data.rotation.yaw === "number") ? data.rotation.yaw : data.yaw;
-          const npitch = (data.rotation && typeof data.rotation.pitch === "number") ? data.rotation.pitch : data.pitch;
-
-          const newLevel = Number(data.level ?? this.level);
-          const levelChanged = (newLevel !== this.level);
-          this.level = newLevel;
-
-          if (typeof nx === "number" && typeof nz === "number") {
-            this.targetPos.set(nx, typeof ny === "number" ? ny : 0, nz);
-            this.velocityVec.set(vx, vy, vz);
-
-            // Если игрок сменил уровень или возродился далеко (> 28м), очищаем старый буфер и ставим сразу в точку спавна
-            if (levelChanged || this.currentPos.distanceTo(this.targetPos) > TELEPORT_SNAP_DIST) {
-              this.currentPos.copy(this.targetPos);
-              this.snapshots.length = 0;
-            }
-
-            this.snapshots.push({
-              t: recvMs,
-              pos: new THREE.Vector3(nx, typeof ny === "number" ? ny : 0, nz),
-              vel: new THREE.Vector3(vx, vy, vz),
-              yaw: typeof nyaw === "number" ? nyaw : this.targetYaw,
-              pitch: typeof npitch === "number" ? npitch : this.targetPitch
-            });
-            if (this.snapshots.length > 10) this.snapshots.shift();
-          }
-
-          if (typeof nyaw === "number") this.targetYaw = nyaw;
-          if (typeof npitch === "number") this.targetPitch = npitch;
-
-          this.crouching = Boolean(data.crouching || data.crouch || data.moveState === "crouch" || data.anim === "crouch");
-          this.sprinting = Boolean(data.sprinting || data.sprint || data.moveState === "run" || data.anim === "run");
-          this.moveState = data.moveState || data.state || (this.crouching ? "crouch" : (this.sprinting ? "run" : "idle"));
-          this.animState = data.animState || data.anim || this.moveState;
-          this.flashlight = data.flashlight !== false;
-          this.hidden = Boolean(data.hidden);
-          this.alive = data.alive !== false;
-
-          const newNick = data.nickname || data.name || this.nickname;
-          if (newNick !== this.nickname || Boolean(isHostNow) !== this.isHostBadge || levelChanged) {
-            this.nickname = newNick;
-            this.isHostBadge = Boolean(isHostNow);
-            drawOverheadNameTag(this.npCanvas, this.nickname, this.isHostBadge, this.level);
-            this.npTex.needsUpdate = true;
-          }
-        },
-
-        updateLocal(dt, localLevel) {
-          // СТРОГАЯ ИЗОЛЯЦИЯ УРОВНЕЙ (Level 0 / Level 1 / Level 2):
-          // Игроки с другого уровня, спрятавшиеся в шкафу или погибшие в скримере не отображаются рядом в сцене
-          const visibleOnSameLevel = (this.level === localLevel) && !this.hidden && (this.alive !== false);
-          this.rig.root.visible = visibleOnSameLevel;
-          this.peerSpot.intensity = (visibleOnSameLevel && this.flashlight) ? 2.6 : 0;
-          if (!visibleOnSameLevel) return;
-
-          if (this.spawnFade < 1.0) {
-            this.spawnFade = Math.min(1.0, this.spawnFade + dt * 4.0);
-            this.rig.root.scale.setScalar(this.spawnFade);
-          }
-
-          // Интерполяция по буферу снимков (85 мс) + экстраполяция по вектору скорости (Dead Reckoning) из Файла №2
-          const nowMs = Date.now();
-          const renderTs = nowMs - SNAPSHOT_BUFFER_MS;
-          let desiredPos = this.targetPos;
-          let desiredYaw = this.targetYaw;
-          let desiredPitch = this.targetPitch;
-
-          if (this.snapshots.length >= 2) {
-            let s0 = this.snapshots[0];
-            let s1 = this.snapshots[this.snapshots.length - 1];
-            for (let i = 0; i < this.snapshots.length - 1; i++) {
-              if (this.snapshots[i].t <= renderTs && this.snapshots[i + 1].t >= renderTs) {
-                s0 = this.snapshots[i];
-                s1 = this.snapshots[i + 1];
-                break;
-              }
-            }
-            if (renderTs >= s0.t && renderTs <= s1.t && s1.t > s0.t) {
-              const alpha = Math.max(0, Math.min(1, (renderTs - s0.t) / (s1.t - s0.t)));
-              desiredPos = s0.pos.clone().lerp(s1.pos, alpha);
-              let dy = s1.yaw - s0.yaw;
-              while (dy > Math.PI) dy -= Math.PI * 2;
-              while (dy < -Math.PI) dy += Math.PI * 2;
-              desiredYaw = s0.yaw + dy * alpha;
-              desiredPitch = s0.pitch + (s1.pitch - s0.pitch) * alpha;
-            } else if (renderTs > s1.t) {
-              const extrapSec = Math.min(0.16, (renderTs - s1.t) / 1000);
-              desiredPos = s1.pos.clone().addScaledVector(s1.vel, extrapSec);
-              desiredYaw = s1.yaw;
-              desiredPitch = s1.pitch;
-            }
-          }
-
-          const posSmooth = Math.min(1, dt * 16.0);
-          const rotSmooth = Math.min(1, dt * 18.0);
-          this.currentPos.lerp(desiredPos, posSmooth);
-          this.rig.root.position.set(this.currentPos.x, 0, this.currentPos.z);
-
-          let dYaw = desiredYaw - this.currentYaw;
-          while (dYaw > Math.PI) dYaw -= Math.PI * 2;
-          while (dYaw < -Math.PI) dYaw += Math.PI * 2;
-          this.currentYaw += dYaw * rotSmooth;
-          this.currentPitch += (desiredPitch - this.currentPitch) * rotSmooth;
-          this.rig.root.rotation.y = this.currentYaw + Math.PI;
-
-          // Вычисление скорости движения для плавной анимации ног и рук Hazmat MK-IV
-          const speedMag = Math.hypot(this.velocityVec.x, this.velocityVec.z) + this.currentPos.distanceTo(desiredPos) * 10;
-          const isMoving = speedMag > 0.22 || this.moveState === "walk" || this.moveState === "run" || this.animState === "walk" || this.animState === "run";
-          const animMode = (this.sprinting && isMoving) ? "run" : (isMoving ? "walk" : (this.animState === "panic" ? "panic" : "idle"));
-
-          g.animateExplorerRig(this.rig, animMode, dt, "vhs");
-
-          // Плавное приседание модели (crouch state)
-          if (this.crouching || this.moveState === "crouch" || this.animState === "crouch") {
-            this.rig.pelvis.position.y -= 0.34;
-            this.rig.torso.rotation.x += 0.28;
-            this.nameSprite.position.y = 1.80;
-          } else {
-            this.nameSprite.position.y = 2.14;
-          }
-
-          // Поворот головы и луча фонарика по вертикальному углу камеры (pitch)
-          this.rig.head.rotation.x = -this.currentPitch * 0.65;
-          if (this.peerTarget) {
-            this.peerTarget.position.set(0, 1.25 + Math.sin(this.currentPitch) * 4.5, 8.0);
-          }
-        },
-
-        dispose() {
-          if (g && this.rig && this.rig.root) {
-            g.scene.remove(this.rig.root);
-          }
-          if (this.nameSprite) {
-            if (this.nameSprite.material?.map) this.nameSprite.material.map.dispose();
-            if (this.nameSprite.material) this.nameSprite.material.dispose();
+      // Подключаем облачный MQTT over WSS (как в зомби.html)
+      this.mqttClient = new NativeWsMqttClient(
+        (topic, payload) => this.handleEnvelope(topic, payload),
+        (isConn) => {
+          this.connected = isConn;
+          this.updateStatusUI();
+          if (isConn && this.currentRoomId) {
+            this.subscribeRoomTopics(this.currentRoomId);
+            this.pushMyState(true);
+            if (this.isHost) this.publishRoomMeta();
           }
         }
+      );
+      this.mqttClient.subscribe(`${CLOUD_TOPIC_PREFIX}/rooms/+/meta`);
+      this.mqttClient.connect('br_' + this.uid + '_' + Math.random().toString(36).substring(2, 5));
+
+      this.bindMenuButtons();
+      this.updateStatusUI();
+      this.renderRoomsList();
+      this.renderLobbyUI();
+
+      // Фоновый цикл отправки координат и очистки отключившихся игроков
+      setInterval(() => {
+        renewTabLease(this.uid);
+        this.pruneStalePlayers();
+        if (this.currentRoomId) {
+          this.pushMyState(false);
+          if (this.isHost && this.roomState === 'playing') {
+            this.pushMonstersState();
+          }
+        }
+      }, SYNC_INTERVAL_MS);
+
+      window.addEventListener('beforeunload', () => this.leaveRoom());
+    },
+
+    setNickname(raw) {
+      const clean = (raw || '').trim().slice(0, 16) || 'Stalker';
+      this.nickname = clean;
+      try { localStorage.setItem('br_player_nick', clean); } catch (e) {}
+      const joinNickInput = document.getElementById('inputJoinPlayerName');
+      const hostNickInput = document.getElementById('inputHostPlayerName');
+      if (joinNickInput && document.activeElement !== joinNickInput) joinNickInput.value = clean;
+      if (hostNickInput && document.activeElement !== hostNickInput) hostNickInput.value = clean;
+      if (this.currentRoomId) {
+        if (this.isHost) {
+          this.hostName = clean;
+          this.publishRoomMeta();
+        }
+        this.pushMyState(true);
+      }
+    },
+
+    sendNetworkPacket(topic, payload, retain = false) {
+      if (this.localBroadcast) {
+        try { this.localBroadcast.postMessage({ topic, payload }); } catch (e) {}
+      }
+      if (this.mqttClient && this.mqttClient.connected) {
+        this.mqttClient.publish(topic, payload, retain);
+      }
+    },
+
+    subscribeRoomTopics(code) {
+      if (!this.mqttClient) return;
+      this.mqttClient.subscribe(`${CLOUD_TOPIC_PREFIX}/rooms/${code}/players/+`);
+      this.mqttClient.subscribe(`${CLOUD_TOPIC_PREFIX}/rooms/${code}/events`);
+      this.mqttClient.subscribe(`${CLOUD_TOPIC_PREFIX}/rooms/${code}/monsters`);
+    },
+
+    createRoom() {
+      const code = 'BR-' + Math.floor(1000 + Math.random() * 9000);
+      this.clearRemotePlayers();
+      this.roomPlayersMeta.clear();
+
+      this.currentRoomId = code;
+      this.isHost = true;
+      this.hostName = this.nickname;
+      this.roomState = 'waiting';
+      this.lobbyLevel = typeof currentLevel === 'number' ? currentLevel : 0;
+
+      this.roomPlayersMeta.set(this.uid, {
+        uid: this.uid,
+        nickname: this.nickname,
+        isHost: true,
+        lastUpdateMs: Date.now()
+      });
+
+      this.subscribeRoomTopics(code);
+      this.publishRoomMeta();
+      this.pushMyState(true);
+      this.hideErrors();
+      this.renderLobbyUI();
+      this.renderRoomsList();
+      if (typeof sound !== 'undefined') sound.playUiBeep(640, 0.06);
+    },
+
+    joinRoomByCode(rawCode) {
+      if (!rawCode) {
+        this.showJoinError('Введите код комнаты (например: BR-4821)');
+        return;
+      }
+      let code = rawCode.trim().toUpperCase();
+      if (/^\d{4}$/.test(code)) code = 'BR-' + code;
+      if (!/^BR-\d{4}$/.test(code)) {
+        this.showJoinError('Неверный формат кода! Используйте формат BR-1234.');
+        return;
+      }
+
+      const existingMeta = this.roomsCatalog.get(code);
+      this.clearRemotePlayers();
+      this.roomPlayersMeta.clear();
+
+      this.currentRoomId = code;
+      this.isHost = existingMeta ? (existingMeta.hostUid === this.uid) : false;
+      this.hostName = existingMeta ? (existingMeta.hostName || 'Хост') : 'Ожидание хоста...';
+      this.lobbyLevel = existingMeta && typeof existingMeta.level === 'number' ? existingMeta.level : 0;
+      this.roomState = existingMeta ? (existingMeta.state || 'waiting') : 'waiting';
+
+      this.roomPlayersMeta.set(this.uid, {
+        uid: this.uid,
+        nickname: this.nickname,
+        isHost: this.isHost,
+        lastUpdateMs: Date.now()
+      });
+
+      this.subscribeRoomTopics(code);
+      this.pushMyState(true);
+      // Запрашиваем мгновенный отклик от Хоста и всех игроков в комнате (как peer_hello в зомби.html)
+      this.sendNetworkPacket(`${CLOUD_TOPIC_PREFIX}/rooms/${code}/events`, {
+        type: 'peer_hello',
+        uid: this.uid,
+        nickname: this.nickname,
+        roomId: code,
+        ts: Date.now()
+      }, false);
+
+      this.hideErrors();
+      this.renderLobbyUI();
+      if (typeof switchMenuSubview === 'function') switchMenuSubview('lobby');
+      if (typeof sound !== 'undefined') sound.playUiBeep(680, 0.06);
+
+      // Если игра в комнате уже запущена — сразу входим в 3D-мир на нужный уровень
+      if (this.roomState === 'playing') {
+        this.launchIntoLevel(this.lobbyLevel);
+      }
+    },
+
+    leaveRoom() {
+      if (!this.currentRoomId) return;
+      const oldCode = this.currentRoomId;
+      this.sendNetworkPacket(`${CLOUD_TOPIC_PREFIX}/rooms/${oldCode}/players/${this.uid}`, {
+        uid: this.uid,
+        online: false,
+        ts: Date.now()
+      }, false);
+
+      if (this.isHost) {
+        const deletedMeta = { code: oldCode, deleted: true, updatedAtMs: Date.now() };
+        this.roomsCatalog.delete(oldCode);
+        this.saveCachedRooms();
+        this.sendNetworkPacket(`${CLOUD_TOPIC_PREFIX}/rooms/${oldCode}/meta`, deletedMeta, true);
+      }
+
+      this.currentRoomId = null;
+      this.isHost = false;
+      this.roomState = 'waiting';
+      this.roomPlayersMeta.clear();
+      this.clearRemotePlayers();
+      this.renderLobbyUI();
+      this.renderRoomsList();
+      this.updateStatusUI();
+    },
+
+    publishRoomMeta() {
+      if (!this.currentRoomId || !this.isHost) return;
+      const meta = {
+        code: this.currentRoomId,
+        hostUid: this.uid,
+        hostName: this.nickname,
+        level: this.lobbyLevel,
+        state: this.roomState,
+        playerCount: Math.max(1, this.roomPlayersMeta.size),
+        maxPlayers: MAX_ROOM_PLAYERS,
+        updatedAtMs: Date.now()
+      };
+      this.roomsCatalog.set(this.currentRoomId, meta);
+      this.saveCachedRooms();
+      this.sendNetworkPacket(`${CLOUD_TOPIC_PREFIX}/rooms/${this.currentRoomId}/meta`, meta, true);
+    },
+
+    saveCachedRooms() {
+      try {
+        const obj = {};
+        this.roomsCatalog.forEach((v, k) => { if (!v.deleted) obj[k] = v; });
+        localStorage.setItem('br_cached_rooms', JSON.stringify(obj));
+      } catch (e) {}
+    },
+
+    startMatchFromLobby() {
+      if (!this.currentRoomId) {
+        this.createRoom();
+      }
+      if (!this.isHost && this.roomState !== 'playing') {
+        this.showLobbyError('Только HOST комнаты может запустить игру!');
+        return;
+      }
+      this.roomState = 'playing';
+      if (this.isHost) {
+        this.publishRoomMeta();
+        this.sendNetworkPacket(`${CLOUD_TOPIC_PREFIX}/rooms/${this.currentRoomId}/events`, {
+          type: 'match_start',
+          uid: this.uid,
+          roomId: this.currentRoomId,
+          level: this.lobbyLevel,
+          ts: Date.now()
+        }, false);
+      }
+      this.launchIntoLevel(this.lobbyLevel);
+    },
+
+    launchIntoLevel(lvl) {
+      if (lvl === 2 && typeof startLevel2Game === 'function') {
+        startLevel2Game();
+      } else if (lvl === 1 && typeof startLevel1Game === 'function') {
+        startLevel1Game();
+      } else if (typeof startSingleplayerGame === 'function') {
+        startSingleplayerGame();
+      } else {
+        menuOpen = false;
+        document.body.classList.remove('menu-blur');
+        document.getElementById('mainMenuOverlay')?.classList.add('hidden-menu');
+      }
+      this.updateStatusUI();
+    },
+
+    handleEnvelope(topic, payload) {
+      if (!topic || !payload) return;
+      const parts = topic.split('/');
+      if (parts[1] !== 'rooms' || !parts[2]) return;
+      const rCode = parts[2];
+      const sub = parts[3];
+
+      if (sub === 'meta') {
+        if (payload.deleted) {
+          this.roomsCatalog.delete(rCode);
+        } else {
+          this.roomsCatalog.set(rCode, payload);
+          if (rCode === this.currentRoomId) {
+            this.hostName = payload.hostName || this.hostName;
+            this.lobbyLevel = typeof payload.level === 'number' ? payload.level : this.lobbyLevel;
+            const prevState = this.roomState;
+            this.roomState = payload.state || 'waiting';
+            if (prevState !== 'playing' && this.roomState === 'playing') {
+              this.launchIntoLevel(this.lobbyLevel);
+            }
+            this.renderLobbyUI();
+          }
+        }
+        this.saveCachedRooms();
+        this.renderRoomsList();
+        return;
+      }
+
+      if (rCode !== this.currentRoomId) return;
+
+      if (sub === 'players') {
+        const pUid = parts[4] || payload.uid;
+        if (!pUid || pUid === this.uid) return;
+        if (payload.online === false) {
+          this.removeRemotePlayer(pUid);
+          this.roomPlayersMeta.delete(pUid);
+          this.renderLobbyUI();
+        } else {
+          this.roomPlayersMeta.set(pUid, {
+            uid: pUid,
+            nickname: payload.nickname || 'Stalker',
+            isHost: Boolean(payload.isHost),
+            lastUpdateMs: Date.now()
+          });
+          if (payload.isHost && payload.nickname) {
+            this.hostName = payload.nickname;
+          }
+          this.updateOrCreateRemotePlayer(pUid, payload);
+          this.renderLobbyUI();
+        }
+        this.updateStatusUI();
+      } else if (sub === 'events') {
+        if (payload.uid === this.uid) return;
+        if (payload.type === 'peer_hello') {
+          this.pushMyState(true);
+          if (this.isHost) this.publishRoomMeta();
+        } else if (payload.type === 'match_start') {
+          this.roomState = 'playing';
+          this.lobbyLevel = typeof payload.level === 'number' ? payload.level : this.lobbyLevel;
+          this.launchIntoLevel(this.lobbyLevel);
+        }
+      } else if (sub === 'monsters') {
+        if (!this.isHost && payload.uid !== this.uid) {
+          this.syncedMonsters = payload;
+        }
+      }
+    },
+
+    pushMyState(force = false) {
+      if (!this.currentRoomId) return;
+      const now = performance.now();
+      if (!force && now - this.lastSyncSentMs < SYNC_INTERVAL_MS) return;
+      this.lastSyncSentMs = now;
+
+      const px = typeof playerPos !== 'undefined' ? playerPos.x : camera.position.x;
+      const py = typeof playerPos !== 'undefined' ? playerPos.y : camera.position.y;
+      const pz = typeof playerPos !== 'undefined' ? playerPos.z : camera.position.z;
+      const isMoving = Boolean(keys.w || keys.a || keys.s || keys.d || Math.hypot(joyVec.x, joyVec.y) > 0.15);
+      const animMode = isSprinting && isMoving ? 'run' : (isMoving ? 'walk' : 'idle');
+
+      const statePkt = {
+        uid: this.uid,
+        nickname: this.nickname,
+        isHost: this.isHost,
+        online: true,
+        level: typeof currentLevel === 'number' ? currentLevel : 0,
+        x: Number(px.toFixed(2)),
+        y: Number(py.toFixed(2)),
+        z: Number(pz.toFixed(2)),
+        yaw: Number((yaw || 0).toFixed(3)),
+        pitch: Number((pitch || 0).toFixed(3)),
+        crouch: Boolean(isCrouching),
+        flashlight: Boolean(flashlightOn),
+        equip: equipMode || 'vhs',
+        animMode,
+        ts: Date.now()
       };
 
-      return instance;
-    }
+      this.roomPlayersMeta.set(this.uid, {
+        uid: this.uid,
+        nickname: this.nickname,
+        isHost: this.isHost,
+        lastUpdateMs: Date.now()
+      });
 
-    // =========================================================================
-    // 6. ЕДИНЫЙ МЕНЕДЖЕР ОНЛАЙН-МУЛЬТИПЛЕЕРА (НА БАЗЕ АРХИТЕКТУРЫ ФАЙЛА №2)
-    // =========================================================================
-    const BackroomsOnlineManager = {
-      app: null,
-      db: null,
-      mqttClient: null,
-      localBroadcast: null,
-      uid: initialResolvedUid,
-      nickname: getOrCreateNickname(initialResolvedUid),
+      this.sendNetworkPacket(`${CLOUD_TOPIC_PREFIX}/rooms/${this.currentRoomId}/players/${this.uid}`, statePkt, false);
+    },
 
-      // Состояние соединения
-      connectionStatus: "ONLINE", // 'ONLINE' | 'CONNECTING' | 'OFFLINE' | 'ERROR'
-      firebaseConnected: false,
-      cloudRelayConnected: false,
-      pingMs: 32,
-      lastErrorText: "",
+    updateOrCreateRemotePlayer(pUid, data) {
+      let rp = this.remotePlayers.get(pUid);
+      if (!rp) {
+        const rig = createExplorerRig();
+        const nameTag = createPlayerNameSprite(data.nickname || 'Stalker');
+        rig.root.add(nameTag.sprite);
 
-      // Состояние активной комнаты
-      currentRoomId: null,
-      roomId: null,
-      roomMeta: null,
-      isRoomHost: false,
-      desiredLobbyLevel: 0,
-      roomPlayersMeta: new Map(), // uid -> метаданные игрока
-      remotePlayers: new Map(),   // uid -> 3D RemotePlayerInstance
-      processedEvents: new Set(),
-      activeRoomsCache: {},
+        // Фонарик удалённого игрока
+        const spot = new THREE.SpotLight(0xfffbe6, 2.2, 28, Math.PI / 5.5, 0.5, 1.4);
+        spot.position.set(0, 1.35, 0.15);
+        const spotTarget = new THREE.Object3D();
+        spotTarget.position.set(0, 1.2, 6);
+        rig.root.add(spot);
+        rig.root.add(spotTarget);
+        spot.target = spotTarget;
 
-      // Таймеры и контроль частоты сети (Throttling 65ms + Heartbeat 3000ms)
-      lastSyncTime: 0,
-      lastHeartbeatTime: 0,
-      lastMonsterSyncTime: 0,
-      lastPruneTime: 0,
-      lastSentState: {},
-      latestSyncedMonsters: null,
-
-      // Дескрипторы отписки Firebase listeners (защита от дубликатов)
-      unsubscribeConnected: null,
-      unsubscribeRoomList: null,
-      unsubscribeRoomMeta: null,
-      unsubscribeRoomPlayers: null,
-      unsubscribeRoomWorld: null,
-      unsubscribeRoomEvents: null,
-      unsubscribeRoomMonsters: null,
-      activeDisconnectRef: null,
-
-      init() {
-        const joinInput = document.getElementById("inputJoinPlayerName");
-        const hostInput = document.getElementById("inputHostPlayerName");
-        const uidLabel = document.getElementById("onlineUidJoinLabel");
-
-        if (joinInput) {
-          joinInput.value = this.nickname;
-          joinInput.addEventListener("change", () => this.setNickname(joinInput.value));
-        }
-        if (hostInput) {
-          hostInput.value = this.nickname;
-          hostInput.addEventListener("change", () => this.setNickname(hostInput.value));
-        }
-        if (uidLabel) uidLabel.textContent = this.uid;
-
-        // Детерминированный сдвиг точки появления (чтобы игроки не спавнились ровно в одной координате)
-        if (window.__backroomsGame && window.__backroomsGame.applySafeSpawnOffset) {
-          window.__backroomsGame.applySafeSpawnOffset(this.uid);
-        }
-
-        // 1. Инициализация BroadcastChannel для мгновенной синхронизации между вкладками одного браузера
-        try {
-          if (typeof BroadcastChannel !== "undefined") {
-            if (this.localBroadcast) this.localBroadcast.close();
-            this.localBroadcast = new BroadcastChannel("backrooms_et_v3_net");
-            this.localBroadcast.onmessage = (ev) => {
-              if (ev && ev.data) this.handleNetworkEnvelope(ev.data);
-            };
-          }
-        } catch (e) {}
-
-        // 2. Инициализация облачного WebSocket MQTT релея (из Файла №2)
-        this.mqttClient = new NativeWsMqttClient(
-          (topic, payload) => this.handleCloudMqttMessage(topic, payload),
-          (isConnected) => {
-            this.cloudRelayConnected = isConnected;
-            if (isConnected) {
-              this.connectionStatus = "ONLINE";
-              this.pingMs = this.mqttClient.rttMs || 32;
-              this.showMenuError("");
-              if (this.currentRoomId) {
-                this.pushPlayerState(true);
-                if (this.isHost() && this.roomMeta) {
-                  this.publishCloudRoomMeta(this.currentRoomId, this.roomMeta);
-                }
-              }
-            }
-            this.updateMenuUI();
-            this.updateOnlineHudBadge();
-          }
-        );
-        this.mqttClient.subscribe(`${CLOUD_TOPIC_PREFIX}/rooms/+/meta`);
-        this.mqttClient.connect("br_" + this.uid + "_" + Math.random().toString(36).substring(2, 6));
-
-        // 3. Инициализация Firebase Realtime Database (фоновая синхронизация без блокировки интерфейса)
-        this.initFirebaseRealtimeDb();
-
-        // 4. Обработчики сети, закрытия вкладки и возврата фокуса (Disconnect / Reconnect)
-        window.addEventListener("online", () => {
-          this.connectionStatus = "ONLINE";
-          this.showMenuError("");
-          if (this.mqttClient && !this.mqttClient.connected) {
-            this.mqttClient.connect("br_" + this.uid + "_" + Math.random().toString(36).substring(2, 6));
-          }
-          if (this.currentRoomId) {
-            this.restoreRoomAfterReconnect();
-          }
-          this.updateMenuUI();
-          this.updateOnlineHudBadge();
-        });
-
-        window.addEventListener("offline", () => {
-          this.connectionStatus = "OFFLINE";
-          this.updateMenuUI();
-          this.updateOnlineHudBadge();
-        });
-
-        const onExit = () => {
-          releaseTabLease();
-          this.markOfflineOnExit();
+        scene.add(rig.root);
+        rp = {
+          uid: pUid,
+          nickname: data.nickname || 'Stalker',
+          rig,
+          nameTag,
+          spot,
+          currentPos: new THREE.Vector3(data.x || 0, 0, data.z || 0),
+          targetPos: new THREE.Vector3(data.x || 0, 0, data.z || 0),
+          currentYaw: data.yaw || 0,
+          targetYaw: data.yaw || 0,
+          animMode: 'idle',
+          equip: 'vhs',
+          crouch: false,
+          level: data.level || 0,
+          lastUpdateMs: Date.now()
         };
-        window.addEventListener("beforeunload", onExit);
-        window.addEventListener("pagehide", onExit);
-
-        document.addEventListener("visibilitychange", () => {
-          if (document.visibilityState === "visible") {
-            renewTabLease(this.uid);
-            if (this.currentRoomId) this.pushPlayerState(true);
-          }
-        });
-
-        this.updateMenuUI();
-        this.updateOnlineHudBadge();
-        this.refreshRoomListUI();
-      },
-
-      initFirebaseRealtimeDb() {
-        try {
-          this.app = initializeApp(firebaseConfig);
-          this.db = getDatabase(this.app);
-
-          const connectedRef = ref(this.db, ".info/connected");
-          this.unsubscribeConnected = onValue(
-            connectedRef,
-            (snap) => {
-              const isConn = snap.val() === true;
-              this.firebaseConnected = isConn;
-              if (isConn) {
-                this.connectionStatus = "ONLINE";
-                this.showMenuError("");
-                if (this.currentRoomId) {
-                  this.setupOnDisconnectForPlayer(this.currentRoomId);
-                  this.pushPlayerState(true);
-                }
-              }
-              this.updateMenuUI();
-              this.updateOnlineHudBadge();
-            },
-            () => {}
-          );
-
-          this.unsubscribeRoomList = onValue(
-            ref(this.db, "rooms"),
-            (snapshot) => {
-              const val = snapshot.val() || {};
-              this.activeRoomsCache = val;
-              Object.keys(val).forEach((rCode) => {
-                if (val[rCode] && val[rCode].meta) {
-                  LocalStore.upsertRoom(rCode, val[rCode]);
-                }
-              });
-              this.refreshRoomListUI();
-            },
-            () => {}
-          );
-        } catch (e) {
-          this.firebaseConnected = false;
-        }
-      },
-
-      showMenuError(msg) {
-        const joinErr = document.getElementById("onlineJoinErrorBox");
-        const lobbyErr = document.getElementById("lobbyErrorBanner");
-        [joinErr, lobbyErr].forEach((el) => {
-          if (!el) return;
-          if (!msg) {
-            el.classList.add("hidden");
-            el.textContent = "";
-          } else {
-            el.textContent = `⚠️ ${msg}`;
-            el.classList.remove("hidden");
-          }
-        });
-      },
-
-      setNickname(rawNick) {
-        const clean = sanitizeNickname(rawNick, this.uid);
-        this.nickname = clean;
-        try {
-          sessionStorage.setItem("br_session_nickname", clean);
-          if (!isSecondaryTabInstance) {
-            localStorage.setItem("br_player_nickname", clean);
-          }
-        } catch (e) {}
-
-        const joinInput = document.getElementById("inputJoinPlayerName");
-        const hostInput = document.getElementById("inputHostPlayerName");
-        if (joinInput && joinInput.value !== clean) joinInput.value = clean;
-        if (hostInput && hostInput.value !== clean) hostInput.value = clean;
-
-        if (this.currentRoomId) {
-          if (this.isHost() && this.roomMeta) {
-            this.roomMeta.hostName = clean;
-            this.roomMeta.updatedAt = Date.now();
-            LocalStore.upsertRoom(this.currentRoomId, { meta: this.roomMeta });
-            this.publishCloudRoomMeta(this.currentRoomId, this.roomMeta);
-            if (this.firebaseConnected && this.db) {
-              update(ref(this.db, `rooms/${this.currentRoomId}/meta`), {
-                hostName: clean,
-                updatedAt: Date.now()
-              }).catch(() => {});
-            }
-          }
-          this.pushPlayerState(true);
-          this.updateMenuUI();
-        }
-      },
-
-      setLobbyLevel(lvl) {
-        const parsed = Number(lvl);
-        this.desiredLobbyLevel = parsed === 2 ? 2 : (parsed === 1 ? 1 : 0);
-        if (this.currentRoomId && this.isHost() && this.roomMeta) {
-          this.roomMeta.level = this.desiredLobbyLevel;
-          this.roomMeta.updatedAt = Date.now();
-          LocalStore.upsertRoom(this.currentRoomId, { meta: this.roomMeta });
-          this.publishCloudRoomMeta(this.currentRoomId, this.roomMeta);
-          if (this.localBroadcast) {
-            try {
-              this.localBroadcast.postMessage({
-                type: "room_meta_update",
-                roomId: this.currentRoomId,
-                meta: this.roomMeta
-              });
-            } catch (e) {}
-          }
-          if (this.firebaseConnected && this.db) {
-            update(ref(this.db, `rooms/${this.currentRoomId}/meta`), {
-              level: this.desiredLobbyLevel,
-              updatedAt: Date.now()
-            }).catch(() => {});
-          }
-          this.updateMenuUI();
-        }
-      },
-
-      generateRoomCode() {
-        const num = Math.floor(1000 + Math.random() * 9000);
-        return `BR-${num}`;
-      },
-
-      normalizeRoomCode(rawCode) {
-        const cleaned = String(rawCode || "")
-          .trim()
-          .toUpperCase()
-          .replace(/[^A-Z0-9-]/g, "");
-        if (!cleaned) return "";
-        if (/^\d{4}$/.test(cleaned)) return `BR-${cleaned}`;
-        return cleaned;
-      },
-
-      isHost() {
-        return Boolean(this.currentRoomId && (this.isRoomHost || (this.roomMeta && this.roomMeta.hostUid === this.uid)));
-      },
-
-      isNonHostInActiveRoom() {
-        return Boolean(this.currentRoomId && this.remotePlayers.size > 0 && !this.isHost());
-      },
-
-      // =========================================================================
-      // СОЗДАНИЕ, ПОДКЛЮЧЕНИЕ И ВЫХОД ИЗ КОМНАТЫ (АРХИТЕКТУРА ФАЙЛА №2)
-      // =========================================================================
-      async createRoomFromUI() {
-        const hostInput = document.getElementById("inputHostPlayerName");
-        if (hostInput && hostInput.value.trim()) {
-          this.setNickname(hostInput.value.trim());
-        }
-        return await this.createRoom(this.desiredLobbyLevel);
-      },
-
-      async createRoom(startLevel = 0) {
-        this.showMenuError("");
-        if (this.currentRoomId) {
-          await this.leaveRoom(false);
-        }
-
-        const code = this.generateRoomCode();
-        const now = Date.now();
-        const lvl = Number(startLevel) === 2 ? 2 : (Number(startLevel) === 1 ? 1 : 0);
-        const myPayload = this.buildLocalPlayerPayload("idle", code);
-        myPayload.level = lvl;
-
-        const meta = {
-          roomId: code,
-          code: code,
-          hostUid: this.uid,
-          hostName: this.nickname,
-          state: "lobby",
-          level: lvl,
-          playerCount: 1,
-          maxPlayers: MAX_ROOM_PLAYERS,
-          createdAt: now,
-          updatedAt: now
-        };
-
-        const roomRecord = {
-          meta,
-          players: { [this.uid]: myPayload },
-          world: this.buildInitialWorldPayload()
-        };
-
-        LocalStore.upsertRoom(code, roomRecord);
-        this.publishCloudRoomMeta(code, meta);
-
-        if (this.localBroadcast) {
-          try {
-            this.localBroadcast.postMessage({
-              type: "room_meta_update",
-              roomId: code,
-              meta
-            });
-          } catch (e) {}
-        }
-
-        if (this.db) {
-          try {
-            set(ref(this.db, `rooms/${code}`), roomRecord).catch(() => {});
-          } catch (e) {}
-        }
-
-        await this.switchRoom(code, true, meta);
-
-        const g = window.__backroomsGame;
-        if (g && g.showCharacterThought) {
-          g.showCharacterThought(`«Комната ${code} создана! Вы — HOST.»`, 3400);
-        }
-        return true;
-      },
-
-      async joinRoomByCode(rawCode, rawNickname) {
-        this.showMenuError("");
-        if (rawNickname && rawNickname.trim()) {
-          this.setNickname(rawNickname.trim());
-        }
-
-        const code = this.normalizeRoomCode(rawCode);
-        if (!code || !/^BR-\d{4}$/.test(code)) {
-          this.showMenuError("Формат кода комнаты: BR-4821");
-          return false;
-        }
-
-        let roomRecord = LocalStore.getRoom(code) || (this.activeRoomsCache && this.activeRoomsCache[code]) || null;
-
-        if (this.firebaseConnected && this.db) {
-          try {
-            const snap = await Promise.race([
-              get(ref(this.db, `rooms/${code}`)),
-              new Promise((resolve) => setTimeout(() => resolve(null), 2200))
-            ]);
-            if (snap && snap.exists && snap.exists()) {
-              roomRecord = snap.val();
-              LocalStore.upsertRoom(code, roomRecord);
-            }
-          } catch (e) {}
-        }
-
-        const now = Date.now();
-        let meta = roomRecord && roomRecord.meta ? roomRecord.meta : null;
-        if (!meta) {
-          // Как в Файле №2: разрешаем прямое подключение по валидному коду BR-XXXX,
-          // чтобы два игрока могли войти по коду даже до прихода retained пакета
-          meta = {
-            roomId: code,
-            code: code,
-            hostUid: "",
-            hostName: "Stalker",
-            state: "lobby",
-            level: this.desiredLobbyLevel || 0,
-            playerCount: 1,
-            maxPlayers: MAX_ROOM_PLAYERS,
-            createdAt: now,
-            updatedAt: now
-          };
-          roomRecord = { meta, players: {} };
-          LocalStore.upsertRoom(code, roomRecord);
-        }
-
-        const livePlayers = this.getLivePlayersInRoomRecord(roomRecord);
-        const alreadyIn = livePlayers.some((p) => p.uid === this.uid);
-        const maxAllowed = Number(meta.maxPlayers || MAX_ROOM_PLAYERS);
-        if (!alreadyIn && livePlayers.length >= maxAllowed) {
-          this.showMenuError(`Комната ${code} заполнена (${maxAllowed}/${maxAllowed}).`);
-          return false;
-        }
-
-        const asHost = Boolean(meta.hostUid === this.uid || (!meta.hostUid && livePlayers.length === 0));
-        if (asHost && !meta.hostUid) {
-          meta.hostUid = this.uid;
-          meta.hostName = this.nickname;
-        }
-
-        const g = window.__backroomsGame;
-        const targetLevel = Number(meta.level ?? 0);
-        if (g && g.getCurrentLevel() !== targetLevel) {
-          g.loadLevel(targetLevel);
-          if (g.applySafeSpawnOffset) g.applySafeSpawnOffset(this.uid);
-        }
-
-        await this.switchRoom(code, asHost, meta);
-
-        // Если в кэше комнаты уже есть другие активные игроки — сразу спавним их модели
-        if (roomRecord && roomRecord.players) {
-          Object.keys(roomRecord.players).forEach((pid) => {
-            const pData = roomRecord.players[pid];
-            if (pid !== this.uid && pData && pData.online !== false && (now - Number(pData.lastSeen || pData.timestamp || 0) <= PLAYER_TIMEOUT_MS)) {
-              this.handleRemotePlayerData(pid, pData, now);
-            }
-          });
-        }
-
-        if (g) {
-          if (meta.state === "playing") {
-            g.startGameSession(false, `ОНЛАЙН КО-ОП: ${code}`);
-            g.showCharacterThought(`«Вы подключились к комнате ${code}!»`, 3400);
-          } else {
-            g.switchMenuSubview("lobby");
-            g.showCharacterThought(`«Подключено к лобби ${code}.»`, 3200);
-          }
-        }
-        return true;
-      },
-
-      async switchRoom(newRoomCode, asHost = false, initialMeta = null) {
-        const prevRoom = this.currentRoomId;
-        if (prevRoom && prevRoom !== newRoomCode) {
-          this.broadcastLeaveRoom(prevRoom);
-        }
-
-        this.cleanupRoomListenersOnly();
-        this.clearAllRemotePlayers();
-        this.roomPlayersMeta.clear();
-        this.processedEvents.clear();
-        this.lastSentState = {};
-
-        this.currentRoomId = newRoomCode;
-        this.roomId = newRoomCode;
-        this.isRoomHost = Boolean(asHost);
-        this.roomMeta = initialMeta || {
-          roomId: newRoomCode,
-          code: newRoomCode,
-          hostUid: asHost ? this.uid : "",
-          hostName: asHost ? this.nickname : "Stalker",
-          state: "lobby",
-          level: window.__backroomsGame ? window.__backroomsGame.getCurrentLevel() : 0,
-          playerCount: 1,
-          maxPlayers: MAX_ROOM_PLAYERS,
-          updatedAt: Date.now()
-        };
-
-        if (this.mqttClient) {
-          this.mqttClient.subscribe(`${CLOUD_TOPIC_PREFIX}/rooms/${newRoomCode}/players/+`);
-          this.mqttClient.subscribe(`${CLOUD_TOPIC_PREFIX}/rooms/${newRoomCode}/events`);
-          this.mqttClient.subscribe(`${CLOUD_TOPIC_PREFIX}/rooms/${newRoomCode}/monsters`);
-          this.mqttClient.subscribe(`${CLOUD_TOPIC_PREFIX}/rooms/${newRoomCode}/world`);
-        }
-
-        this.setupOnDisconnectForPlayer(newRoomCode);
-        this.attachRoomListeners(newRoomCode);
-        this.pushPlayerState(true);
-
-        // Запрашиваем немедленный отклик состояния от всех пиров, которые уже в комнате
-        this.emitGameEvent("peer_hello", { roomId: newRoomCode, uid: this.uid });
-
-        this.updateMenuUI();
-        this.updateOnlineHudBadge();
-        this.refreshRoomListUI();
-      },
-
-      broadcastLeaveRoom(roomCode) {
-        if (!roomCode) return;
-        LocalStore.upsertRoomPlayer(roomCode, this.uid, null);
-
-        if (this.localBroadcast) {
-          try {
-            this.localBroadcast.postMessage({
-              type: "player_leave_room",
-              roomId: roomCode,
-              uid: this.uid
-            });
-          } catch (e) {}
-        }
-
-        if (this.mqttClient && this.mqttClient.connected) {
-          this.mqttClient.publish(`${CLOUD_TOPIC_PREFIX}/rooms/${roomCode}/players/${this.uid}`, {
-            uid: this.uid,
-            online: false,
-            timestamp: Date.now()
-          }, false);
-        }
-
-        if (this.db) {
-          try {
-            remove(ref(this.db, `rooms/${roomCode}/players/${this.uid}`)).catch(() => {});
-          } catch (e) {}
-        }
-      },
-
-      async leaveRoom(notifyUser = true) {
-        const oldRoom = this.currentRoomId;
-        if (!oldRoom) return;
-
-        const wasHost = this.isHost();
-        const remainingUids = Array.from(this.roomPlayersMeta.keys()).filter((u) => u !== this.uid);
-
-        this.broadcastLeaveRoom(oldRoom);
-
-        if (wasHost) {
-          if (remainingUids.length > 0) {
-            const nextHostUid = remainingUids.sort()[0];
-            const nextHostMeta = this.roomPlayersMeta.get(nextHostUid);
-            const nextHostName = (nextHostMeta && nextHostMeta.nickname) || "Stalker";
-            const updatedMeta = Object.assign({}, this.roomMeta || {}, {
-              hostUid: nextHostUid,
-              hostName: nextHostName,
-              playerCount: remainingUids.length,
-              updatedAt: Date.now()
-            });
-            LocalStore.upsertRoom(oldRoom, { meta: updatedMeta });
-            this.publishCloudRoomMeta(oldRoom, updatedMeta);
-            if (this.localBroadcast) {
-              try {
-                this.localBroadcast.postMessage({
-                  type: "room_meta_update",
-                  roomId: oldRoom,
-                  meta: updatedMeta
-                });
-              } catch (e) {}
-            }
-            if (this.db) {
-              try {
-                update(ref(this.db, `rooms/${oldRoom}/meta`), updatedMeta).catch(() => {});
-              } catch (e) {}
-            }
-          } else {
-            LocalStore.deleteRoom(oldRoom);
-            this.publishCloudRoomMeta(oldRoom, { roomId: oldRoom, code: oldRoom, deleted: true, updatedAt: Date.now() });
-            if (this.db) {
-              try {
-                remove(ref(this.db, `rooms/${oldRoom}`)).catch(() => {});
-              } catch (e) {}
-            }
-          }
-        }
-
-        if (this.activeDisconnectRef) {
-          try { this.activeDisconnectRef.cancel().catch(() => {}); } catch (e) {}
-          this.activeDisconnectRef = null;
-        }
-
-        this.cleanupRoomListenersOnly();
-        this.clearAllRemotePlayers();
-        this.roomPlayersMeta.clear();
-        this.processedEvents.clear();
-        this.currentRoomId = null;
-        this.roomId = null;
-        this.roomMeta = null;
-        this.isRoomHost = false;
-        this.lastSentState = {};
-
-        if (notifyUser && window.__backroomsGame && window.__backroomsGame.showCharacterThought) {
-          window.__backroomsGame.showCharacterThought(`«Вы покинули комнату ${oldRoom}.»`, 3000);
-        }
-
-        this.updateMenuUI();
-        this.updateOnlineHudBadge();
-        this.refreshRoomListUI();
-      },
-
-      markOfflineOnExit() {
-        if (!this.currentRoomId) return;
-        this.broadcastLeaveRoom(this.currentRoomId);
-      },
-
-      async restoreRoomAfterReconnect() {
-        if (!this.currentRoomId) return;
-        renewTabLease(this.uid);
-        this.setupOnDisconnectForPlayer(this.currentRoomId);
-        this.pushPlayerState(true);
-        this.emitGameEvent("peer_hello", { roomId: this.currentRoomId, uid: this.uid });
-      },
-
-      setupOnDisconnectForPlayer(roomCode) {
-        if (!this.db || !roomCode) return;
-        try {
-          const myPlayerRef = ref(this.db, `rooms/${roomCode}/players/${this.uid}`);
-          const dHandler = onDisconnect(myPlayerRef);
-          this.activeDisconnectRef = dHandler;
-          dHandler.remove().catch(() => {});
-        } catch (e) {}
-      },
-
-      cleanupRoomListenersOnly() {
-        if (this.unsubscribeRoomMeta) { try { this.unsubscribeRoomMeta(); } catch (e) {} this.unsubscribeRoomMeta = null; }
-        if (this.unsubscribeRoomPlayers) { try { this.unsubscribeRoomPlayers(); } catch (e) {} this.unsubscribeRoomPlayers = null; }
-        if (this.unsubscribeRoomWorld) { try { this.unsubscribeRoomWorld(); } catch (e) {} this.unsubscribeRoomWorld = null; }
-        if (this.unsubscribeRoomEvents) { try { this.unsubscribeRoomEvents(); } catch (e) {} this.unsubscribeRoomEvents = null; }
-        if (this.unsubscribeRoomMonsters) { try { this.unsubscribeRoomMonsters(); } catch (e) {} this.unsubscribeRoomMonsters = null; }
-      },
-
-      attachRoomListeners(roomCode) {
-        this.cleanupRoomListenersOnly();
-        if (!this.db || !roomCode) return;
-
-        try {
-          this.unsubscribeRoomMeta = onValue(
-            ref(this.db, `rooms/${roomCode}/meta`),
-            (snap) => {
-              const meta = snap.val();
-              if (meta) this.onRoomMetaUpdated(meta);
-            },
-            () => {}
-          );
-
-          this.unsubscribeRoomPlayers = onValue(
-            ref(this.db, `rooms/${roomCode}/players`),
-            (snap) => {
-              const playersVal = snap.val() || {};
-              const recvMs = Date.now();
-              Object.keys(playersVal).forEach((pid) => {
-                const pData = playersVal[pid];
-                if (!pData) return;
-                if (pid === this.uid) {
-                  this.roomPlayersMeta.set(this.uid, Object.assign({}, pData, { uid: this.uid, lastSeen: recvMs }));
-                  return;
-                }
-                const age = recvMs - Number(pData.lastSeen || pData.timestamp || recvMs);
-                if (pData.online === false || age > PLAYER_TIMEOUT_MS) {
-                  this.removeRemotePlayer(pid);
-                  this.roomPlayersMeta.delete(pid);
-                } else {
-                  this.handleRemotePlayerData(pid, pData, recvMs);
-                }
-              });
-              this.ensureValidHost();
-              this.updateMenuUI();
-              this.updateOnlineHudBadge();
-            },
-            () => {}
-          );
-
-          this.unsubscribeRoomWorld = onValue(
-            ref(this.db, `rooms/${roomCode}/world`),
-            (snap) => {
-              const wData = snap.val();
-              if (wData) this.applyWorldSnapshot(wData);
-            },
-            () => {}
-          );
-
-          this.unsubscribeRoomEvents = onValue(
-            ref(this.db, `rooms/${roomCode}/events/latest`),
-            (snap) => {
-              const ev = snap.val();
-              if (ev && ev.id && !this.processedEvents.has(ev.id)) {
-                this.handleIncomingEventPacket(ev);
-              }
-            },
-            () => {}
-          );
-
-          this.unsubscribeRoomMonsters = onValue(
-            ref(this.db, `rooms/${roomCode}/monsters`),
-            (snap) => {
-              if (this.isHost()) return;
-              const mData = snap.val();
-              if (mData) {
-                this.latestSyncedMonsters = mData;
-                if (mData.l1Light && window.__backroomsGame) {
-                  window.__backroomsGame.setLightStateL1(mData.l1Light.state, mData.l1Light.timer);
-                }
-              }
-            },
-            () => {}
-          );
-        } catch (e) {}
-      },
-
-      // =========================================================================
-      // ОБРАБОТКА ВХОДЯЩИХ ДАННЫХ ОТ BROADCASTCHANNEL И WEBSOCKET MQTT (ИЗ ФАЙЛА №2)
-      // =========================================================================
-      handleNetworkEnvelope(msg) {
-        if (!msg) return;
-        if (msg.type === "player_state" && msg.data && msg.data.uid !== this.uid) {
-          if (msg.data.roomId === this.currentRoomId) {
-            this.handleRemotePlayerData(msg.data.uid, msg.data, Date.now());
-          }
-        } else if (msg.type === "player_leave_room" && msg.uid !== this.uid) {
-          if (msg.roomId === this.currentRoomId) {
-            this.removeRemotePlayer(msg.uid);
-            this.roomPlayersMeta.delete(msg.uid);
-            this.ensureValidHost();
-            this.updateMenuUI();
-            this.updateOnlineHudBadge();
-          }
-        } else if (msg.type === "room_meta_update" && msg.roomId) {
-          LocalStore.upsertRoom(msg.roomId, { meta: msg.meta });
-          if (msg.roomId === this.currentRoomId && msg.meta) {
-            this.onRoomMetaUpdated(msg.meta);
-          }
-          this.refreshRoomListUI();
-        } else if (msg.type === "game_event" && msg.event) {
-          if (msg.event.roomId === this.currentRoomId) {
-            this.handleIncomingEventPacket(msg.event);
-          }
-        } else if (msg.type === "monsters_sync" && msg.roomId === this.currentRoomId) {
-          if (!this.isHost() && msg.data && msg.data.senderUid !== this.uid) {
-            this.latestSyncedMonsters = msg.data;
-            if (msg.data.l1Light && window.__backroomsGame) {
-              window.__backroomsGame.setLightStateL1(msg.data.l1Light.state, msg.data.l1Light.timer);
-            }
-          }
-        } else if (msg.type === "world_sync" && msg.roomId === this.currentRoomId) {
-          if (msg.data && msg.data.senderUid !== this.uid) {
-            this.applyWorldSnapshot(msg.data);
-          }
-        }
-      },
-
-      handleCloudMqttMessage(topic, payload) {
-        if (!topic || !payload) return;
-        const parts = topic.split("/");
-        if (parts[1] !== "rooms" || !parts[2]) return;
-        const rId = parts[2];
-        const subType = parts[3];
-
-        if (subType === "meta") {
-          if (payload.deleted) {
-            LocalStore.deleteRoom(rId);
-          } else {
-            LocalStore.upsertRoom(rId, { meta: payload });
-            if (rId === this.currentRoomId) {
-              this.onRoomMetaUpdated(payload);
-            }
-          }
-          this.refreshRoomListUI();
-        } else if (subType === "players" && rId === this.currentRoomId) {
-          const pUid = parts[4] || payload.uid;
-          if (pUid && pUid !== this.uid) {
-            if (payload.online === false) {
-              this.removeRemotePlayer(pUid);
-              this.roomPlayersMeta.delete(pUid);
-              this.ensureValidHost();
-              this.updateMenuUI();
-              this.updateOnlineHudBadge();
-            } else {
-              this.handleRemotePlayerData(pUid, payload, Date.now());
-            }
-          }
-        } else if (subType === "events" && rId === this.currentRoomId) {
-          this.handleIncomingEventPacket(payload);
-        } else if (subType === "monsters" && rId === this.currentRoomId) {
-          if (!this.isHost() && payload.senderUid !== this.uid) {
-            this.latestSyncedMonsters = payload;
-            if (payload.l1Light && window.__backroomsGame) {
-              window.__backroomsGame.setLightStateL1(payload.l1Light.state, payload.l1Light.timer);
-            }
-          }
-        } else if (subType === "world" && rId === this.currentRoomId) {
-          if (payload.senderUid !== this.uid) {
-            this.applyWorldSnapshot(payload);
-          }
-        }
-      },
-
-      publishCloudRoomMeta(roomId, meta) {
-        if (this.mqttClient && this.mqttClient.connected && roomId && meta) {
-          this.mqttClient.publish(`${CLOUD_TOPIC_PREFIX}/rooms/${roomId}/meta`, meta, true);
-        }
-      },
-
-      onRoomMetaUpdated(meta) {
-        if (!meta) return;
-        const prevState = this.roomMeta ? this.roomMeta.state : "lobby";
-        this.roomMeta = Object.assign({}, this.roomMeta || {}, meta);
-        if (meta.hostUid) {
-          this.isRoomHost = (meta.hostUid === this.uid);
-        }
-        LocalStore.upsertRoom(this.currentRoomId, { meta: this.roomMeta });
-
-        const g = window.__backroomsGame;
-        if (prevState !== "playing" && meta.state === "playing" && g) {
-          const targetLvl = Number(meta.level ?? 0);
-          if (g.getCurrentLevel() !== targetLvl) {
-            g.loadLevel(targetLvl);
-            if (g.applySafeSpawnOffset) g.applySafeSpawnOffset(this.uid);
-          }
-          if (g.isMenuOpen()) {
-            g.startGameSession(false, `ОНЛАЙН КО-ОП: ${this.currentRoomId}`);
-            if (g.showCharacterThought) {
-              g.showCharacterThought(`«Матч в комнате ${this.currentRoomId} начался!»`, 3400);
-            }
-          }
-        }
-
-        this.updateMenuUI();
-        this.updateOnlineHudBadge();
-      },
-
-      // =========================================================================
-      // СИНХРОНИЗАЦИЯ ИГРОКОВ (10-20 UPDATES/SEC + DELTAS + INTERPOLATION)
-      // =========================================================================
-      buildLocalPlayerPayload(animMode = "idle", explicitRoomId = null) {
-        const g = window.__backroomsGame;
-        const ps = g
-          ? g.getPlayerState()
-          : { x: 1.8, y: 0, z: 1.8, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0, level: 0, crouching: false, sprinting: false, flashlight: true, hidden: false, alive: true };
-        const nowMs = Date.now();
-        const moveSpeed = Math.hypot(ps.vx || 0, ps.vz || 0);
-        const moveState = !ps.alive
-          ? "dead"
-          : (ps.crouching ? "crouch" : (ps.sprinting && moveSpeed > 0.3 ? "run" : (moveSpeed > 0.15 ? "walk" : "idle")));
-        const animState = !ps.alive ? "dead" : (ps.crouching ? "crouch" : (animMode || moveState));
-
-        return {
-          uid: this.uid,
-          nickname: this.nickname,
-          name: this.nickname,
-          roomId: explicitRoomId || this.currentRoomId,
-          position: { x: ps.x, y: ps.y, z: ps.z },
-          velocity: { x: ps.vx || 0, y: ps.vy || 0, z: ps.vz || 0 },
-          rotation: { yaw: ps.yaw, pitch: ps.pitch },
-          x: ps.x,
-          y: ps.y,
-          z: ps.z,
-          vx: ps.vx || 0,
-          vy: ps.vy || 0,
-          vz: ps.vz || 0,
-          yaw: ps.yaw,
-          pitch: ps.pitch,
-          level: Number(ps.level ?? 0),
-          moveState,
-          animState,
-          anim: animState,
-          crouch: Boolean(ps.crouching),
-          crouching: Boolean(ps.crouching),
-          sprint: Boolean(ps.sprinting),
-          sprinting: Boolean(ps.sprinting),
-          flashlight: Boolean(ps.flashlight),
-          hidden: Boolean(ps.hidden),
-          alive: Boolean(ps.alive),
-          isHost: this.isHost(),
-          online: true,
-          timestamp: nowMs,
-          lastSeen: nowMs
-        };
-      },
-
-      pushPlayerState(force = false, animMode = "idle") {
-        if (!this.uid || !this.currentRoomId) return;
-        const nowPerf = performance.now();
-        if (!force && (nowPerf - this.lastSyncTime) < ONLINE_SYNC_INTERVAL_MS) return;
-
-        const payload = this.buildLocalPlayerPayload(animMode);
-        const isHeartbeatDue = (nowPerf - this.lastHeartbeatTime) >= HEARTBEAT_INTERVAL_MS;
-        const prev = this.lastSentState;
-
-        const hasChanged =
-          force ||
-          isHeartbeatDue ||
-          Math.abs((prev.x ?? -999) - payload.x) > 0.015 ||
-          Math.abs((prev.y ?? -999) - payload.y) > 0.015 ||
-          Math.abs((prev.z ?? -999) - payload.z) > 0.015 ||
-          Math.abs((prev.yaw ?? -999) - payload.yaw) > 0.015 ||
-          Math.abs((prev.pitch ?? -999) - payload.pitch) > 0.015 ||
-          prev.level !== payload.level ||
-          prev.moveState !== payload.moveState ||
-          prev.animState !== payload.animState ||
-          prev.crouching !== payload.crouching ||
-          prev.sprinting !== payload.sprinting ||
-          prev.flashlight !== payload.flashlight ||
-          prev.hidden !== payload.hidden ||
-          prev.alive !== payload.alive ||
-          prev.nickname !== payload.nickname;
-
-        if (!hasChanged) return;
-
-        this.lastSyncTime = nowPerf;
-        if (isHeartbeatDue) {
-          this.lastHeartbeatTime = nowPerf;
-          renewTabLease(this.uid);
-        }
-        this.lastSentState = Object.assign({}, payload);
-        this.roomPlayersMeta.set(this.uid, payload);
-        LocalStore.upsertRoomPlayer(this.currentRoomId, this.uid, payload);
-
-        // 1. Мгновенная отправка через BroadcastChannel (между вкладками)
-        if (this.localBroadcast) {
-          try {
-            this.localBroadcast.postMessage({ type: "player_state", data: payload });
-          } catch (e) {}
-        }
-
-        // 2. Отправка через облачный WebSocket MQTT релей (между любыми устройствами)
-        if (this.mqttClient && this.mqttClient.connected) {
-          this.mqttClient.publish(
-            `${CLOUD_TOPIC_PREFIX}/rooms/${this.currentRoomId}/players/${this.uid}`,
-            payload,
-            false
-          );
-          this.pingMs = this.mqttClient.rttMs || 32;
-        }
-
-        // 3. Запись в Firebase Realtime Database
-        if (this.firebaseConnected && this.db) {
-          const t0 = performance.now();
-          update(ref(this.db, `rooms/${this.currentRoomId}/players/${this.uid}`), payload)
-            .then(() => {
-              const rtt = Math.round((performance.now() - t0) * 0.6);
-              this.pingMs = Math.max(12, Math.min(999, Math.round(this.pingMs * 0.7 + rtt * 0.3)));
-            })
-            .catch(() => {});
-        }
-      },
-
-      handleRemotePlayerData(rUid, data, recvMs = Date.now()) {
-        if (!rUid || rUid === this.uid) return;
-        if (data.online === false) {
-          this.removeRemotePlayer(rUid);
-          this.roomPlayersMeta.delete(rUid);
-          this.updateMenuUI();
-          this.updateOnlineHudBadge();
-          return;
-        }
-
-        const isHostNow = Boolean(this.roomMeta && this.roomMeta.hostUid === rUid);
-        this.roomPlayersMeta.set(rUid, Object.assign({}, data, { uid: rUid, lastSeen: recvMs }));
-        if (this.currentRoomId) {
-          LocalStore.upsertRoomPlayer(this.currentRoomId, rUid, data);
-        }
-
-        let rp = this.remotePlayers.get(rUid);
-        const isNewJoin = !rp;
-        if (!rp) {
-          rp = createRemotePlayerInstance(rUid, data, isHostNow);
-          if (!rp) return;
-          this.remotePlayers.set(rUid, rp);
-
-          if (window.__backroomsGame && window.__backroomsGame.showCharacterThought) {
-            window.__backroomsGame.showCharacterThought(
-              `«Исследователь ${rp.nickname} подключился (Уровень ${rp.level}).»`,
-              3200
-            );
-          }
-          // Немедленно отправляем в ответ наше состояние, чтобы оба игрока сразу увидели друг друга
-          this.pushPlayerState(true);
-        }
-
-        rp.updateFromNetwork(data, recvMs, isHostNow);
-
-        if (isNewJoin) {
-          this.updateRoomPlayerCount();
-          this.updateMenuUI();
-          this.updateOnlineHudBadge();
-        }
-      },
-
-      removeRemotePlayer(rUid) {
-        const rp = this.remotePlayers.get(rUid);
-        if (rp) {
-          rp.dispose();
-          this.remotePlayers.delete(rUid);
-          if (this.currentRoomId) {
-            LocalStore.upsertRoomPlayer(this.currentRoomId, rUid, null);
-          }
-          this.updateRoomPlayerCount();
-          this.updateMenuUI();
-          this.updateOnlineHudBadge();
-        }
-      },
-
-      clearAllRemotePlayers() {
-        this.remotePlayers.forEach((rp) => rp.dispose());
-        this.remotePlayers.clear();
-      },
-
-      pruneStalePlayers() {
-        if (!this.currentRoomId) return;
-        const nowMs = Date.now();
-        let changed = false;
-
-        this.remotePlayers.forEach((rp, rUid) => {
-          if (nowMs - rp.lastUpdateMs > PLAYER_TIMEOUT_MS) {
-            rp.dispose();
-            this.remotePlayers.delete(rUid);
-            this.roomPlayersMeta.delete(rUid);
-            LocalStore.upsertRoomPlayer(this.currentRoomId, rUid, null);
-            changed = true;
-            if (window.__backroomsGame && window.__backroomsGame.showCharacterThought) {
-              window.__backroomsGame.showCharacterThought(`«Игрок ${rp.nickname} отключился.»`, 3000);
-            }
-            if (this.isHost() && this.firebaseConnected && this.db) {
-              remove(ref(this.db, `rooms/${this.currentRoomId}/players/${rUid}`)).catch(() => {});
-            }
-          }
-        });
-
-        if (changed) {
-          this.ensureValidHost();
-          this.updateRoomPlayerCount();
-          this.updateMenuUI();
-          this.updateOnlineHudBadge();
-        }
-      },
-
-      ensureValidHost() {
-        if (!this.currentRoomId || !this.roomMeta || this.roomPlayersMeta.size === 0) return;
-        const currentHostUid = this.roomMeta.hostUid;
-        if (currentHostUid && this.roomPlayersMeta.has(currentHostUid)) {
-          this.isRoomHost = (currentHostUid === this.uid);
-          return;
-        }
-        const sortedUids = Array.from(this.roomPlayersMeta.keys()).sort();
-        const nextHostUid = sortedUids[0];
-        if (nextHostUid === this.uid) {
-          this.isRoomHost = true;
-          this.roomMeta.hostUid = this.uid;
-          this.roomMeta.hostName = this.nickname;
-          this.roomMeta.playerCount = this.roomPlayersMeta.size;
-          this.roomMeta.updatedAt = Date.now();
-          LocalStore.upsertRoom(this.currentRoomId, { meta: this.roomMeta });
-          this.publishCloudRoomMeta(this.currentRoomId, this.roomMeta);
-          if (this.firebaseConnected && this.db) {
-            update(ref(this.db, `rooms/${this.currentRoomId}/meta`), {
-              hostUid: this.uid,
-              hostName: this.nickname,
-              playerCount: this.roomPlayersMeta.size,
-              updatedAt: Date.now()
-            }).catch(() => {});
-          }
-        }
-      },
-
-      updateRoomPlayerCount() {
-        if (!this.currentRoomId || !this.roomMeta) return;
-        const count = Math.max(1, Math.min(MAX_ROOM_PLAYERS, 1 + this.remotePlayers.size));
-        this.roomMeta.playerCount = count;
-        this.roomMeta.updatedAt = Date.now();
-        LocalStore.upsertRoom(this.currentRoomId, { meta: this.roomMeta });
-        if (this.isHost()) {
-          this.publishCloudRoomMeta(this.currentRoomId, this.roomMeta);
-          if (this.firebaseConnected && this.db) {
-            update(ref(this.db, `rooms/${this.currentRoomId}/meta`), {
-              playerCount: count,
-              updatedAt: Date.now()
-            }).catch(() => {});
-          }
-        }
-      },
-
-      // =========================================================================
-      // ГЛАВНЫЙ КАДРОВЫЙ ЦИКЛ (60 FPS RENDER INTERPOLATION + 65MS NETWORK TICK)
-      // =========================================================================
-      updateFrame(elapsed, dt, currentAnimMode) {
-        const g = window.__backroomsGame;
-        if (!g || !this.currentRoomId) return;
-
-        const localLevel = g.getCurrentLevel();
-
-        // 1. На каждом кадре рендера (60+ FPS) плавно интерполируем всех удалённых игроков
-        this.remotePlayers.forEach((rp) => {
-          rp.updateLocal(dt, localLevel);
-        });
-
-        // 2. Throttled сетевая отправка позиции/состояния (каждые 65 мс = ~15.4 раза в секунду)
-        this.pushPlayerState(false, currentAnimMode);
-
-        // 3. Throttled синхронизация монстров от авторитетного клиента (HOST) каждые 140 мс
-        const nowPerf = performance.now();
-        if (this.isHost() && (nowPerf - this.lastMonsterSyncTime) >= 140) {
-          this.lastMonsterSyncTime = nowPerf;
-          this.broadcastHostMonsters();
-        }
-
-        // 4. Очистка отключившихся по таймауту игроков раз в 1.5 сек
-        if (nowPerf - this.lastPruneTime >= 1500) {
-          this.lastPruneTime = nowPerf;
-          this.pruneStalePlayers();
-        }
-      },
-
-      broadcastHostMonsters() {
-        const g = window.__backroomsGame;
-        if (!g || !this.currentRoomId || !this.isHost()) return;
-        const mState = g.getMonstersState();
-        mState.l1Light = g.getLightStateL1();
-        mState.senderUid = this.uid;
-        mState.updatedAt = Date.now();
-
-        if (this.localBroadcast) {
-          try {
-            this.localBroadcast.postMessage({
-              type: "monsters_sync",
-              roomId: this.currentRoomId,
-              data: mState
-            });
-          } catch (e) {}
-        }
-
-        if (this.mqttClient && this.mqttClient.connected) {
-          this.mqttClient.publish(`${CLOUD_TOPIC_PREFIX}/rooms/${this.currentRoomId}/monsters`, mState, false);
-        }
-
-        if (this.firebaseConnected && this.db) {
-          update(ref(this.db, `rooms/${this.currentRoomId}/monsters`), mState).catch(() => {});
-        }
-      },
-
-      applySyncedMonsters(elapsed, dt) {
-        const g = window.__backroomsGame;
-        if (g && this.latestSyncedMonsters) {
-          g.applyMonstersState(this.latestSyncedMonsters, elapsed, dt);
-        }
-      },
-
-      // =========================================================================
-      // ПЕРЕХОДЫ МЕЖДУ LEVEL 0 / LEVEL 1 / LEVEL 2 И ЛИФТЫ
-      // =========================================================================
-      onLocalLevelChanged(newLevel) {
-        const parsedLvl = Number(newLevel);
-        if (window.__backroomsGame && window.__backroomsGame.applySafeSpawnOffset) {
-          window.__backroomsGame.applySafeSpawnOffset(this.uid);
-        }
-        if (!this.currentRoomId) return;
-        // Мгновенно отправляем обновлённый level и новую стартовую позицию в сеть!
-        this.pushPlayerState(true);
-        this.emitGameEvent("level_change", { level: parsedLvl, playerName: this.nickname });
-      },
-
-      async startGameFromLobbyButton(fallbackLevel = 0) {
-        const g = window.__backroomsGame;
-        if (!this.currentRoomId) {
-          await this.createRoom(fallbackLevel);
-        }
-
-        const rawL = Number(this.roomMeta?.level ?? fallbackLevel);
-        const targetLvl = rawL === 2 ? 2 : (rawL === 1 ? 1 : 0);
-
-        if (this.isHost() && this.roomMeta) {
-          this.roomMeta.state = "playing";
-          this.roomMeta.level = targetLvl;
-          this.roomMeta.updatedAt = Date.now();
-          LocalStore.upsertRoom(this.currentRoomId, { meta: this.roomMeta });
-          this.publishCloudRoomMeta(this.currentRoomId, this.roomMeta);
-
-          if (this.localBroadcast) {
-            try {
-              this.localBroadcast.postMessage({
-                type: "room_meta_update",
-                roomId: this.currentRoomId,
-                meta: this.roomMeta
-              });
-            } catch (e) {}
-          }
-
-          if (this.firebaseConnected && this.db) {
-            update(ref(this.db, `rooms/${this.currentRoomId}/meta`), {
-              state: "playing",
-              level: targetLvl,
-              updatedAt: Date.now()
-            }).catch(() => {});
-          }
-
-          this.emitGameEvent("match_start", { level: targetLvl, roomId: this.currentRoomId });
-        }
-
-        if (g) {
-          if (g.getCurrentLevel() !== targetLvl) {
-            g.loadLevel(targetLvl);
-            if (g.applySafeSpawnOffset) g.applySafeSpawnOffset(this.uid);
-          }
-          g.startGameSession(false, `ОНЛАЙН КО-ОП: ${this.currentRoomId}`);
-          this.pushPlayerState(true);
-        }
-      },
-
-      copyRoomCode() {
-        if (!this.currentRoomId) {
-          this.showMenuError("Сначала создайте комнату или подключитесь к существующей.");
-          return;
-        }
-        const code = this.currentRoomId;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(code).catch(() => {});
-        }
-        const btn = document.getElementById("btnCopyRoomCode");
-        if (btn) {
-          const orig = btn.textContent;
-          btn.textContent = "[ СКОПИРОВАНО! ]";
-          setTimeout(() => { btn.textContent = orig; }, 1600);
-        }
-      },
-
-      // =========================================================================
-      // ИГРОВЫЕ СОБЫТИЯ И СИНХРОНИЗАЦИЯ МИРА (ПРЕДОХРАНИТЕЛИ, ЛИФТЫ, ГД-800, КЛАПАНЫ, ТЕРМИНАЛЫ)
-      // =========================================================================
-      buildInitialWorldPayload() {
-        const g = window.__backroomsGame;
-        if (!g) return { updatedAt: Date.now() };
-        const fb0 = g.levelFuseBoxes[0];
-        const fb1 = g.levelFuseBoxes[1];
-        let inst0 = 0, inst1 = 0;
-        if (fb0) fb0.slots.forEach((s) => { if (s.installed) inst0++; });
-        if (fb1) fb1.slots.forEach((s) => { if (s.installed) inst1++; });
-        return {
-          senderUid: this.uid,
-          looseFuses: g.worldLooseFuses.map((lf) => Boolean(lf.collected)),
-          fusesInstalledL0: inst0,
-          fusesInstalledL1: inst1,
-          doorTargetL0: fb0 ? fb0.doorTargetDeg : 0,
-          doorTargetL1: fb1 ? fb1.doorTargetDeg : 0,
-          elevOpenL0: Boolean(g.levelElevators[0]?.doorsOpen),
-          elevOpenL1: Boolean(g.levelElevators[1]?.doorsOpen),
-          l1HermeticOpen: Boolean(g.gameState?.doors?.l1_hermetic?.targetMode === "OPEN"),
-          l2Valves: g.gameState ? {
-            SPAWN: g.gameState.valves.SPAWN.angleDeg,
-            B: g.gameState.valves.B.angleDeg,
-            C: g.gameState.valves.C.angleDeg,
-            G: g.gameState.valves.G.angleDeg
-          } : null,
-          l2Terminals: g.gameState ? {
-            B: { cv: g.gameState.terminals.B.codeVerified, s: g.gameState.terminals.B.solved, ans: g.gameState.terminals.B.expectedAnswer, eq: g.gameState.terminals.B.equation },
-            C: { cv: g.gameState.terminals.C.codeVerified, s: g.gameState.terminals.C.solved, ans: g.gameState.terminals.C.expectedAnswer, eq: g.gameState.terminals.C.equation },
-            G: { cv: g.gameState.terminals.G.codeVerified, s: g.gameState.terminals.G.solved, ans: g.gameState.terminals.G.expectedAnswer, eq: g.gameState.terminals.G.equation }
-          } : null,
-          l2Doors: g.gameState ? {
-            entrance: g.gameState.doors.entrance.targetMode,
-            exit: g.gameState.doors.exit.targetMode
-          } : null,
-          cratesL1: g.l1Crates.map((c) => ({ o: Boolean(c.isOpen), l: Boolean(c.isLooted) })),
-          updatedAt: Date.now()
-        };
-      },
-
-      emitGameEvent(type, payload = {}) {
-        if (!this.currentRoomId) return;
-        const eventId = `ev_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
-        this.processedEvents.add(eventId);
-
-        const eventPacket = {
-          id: eventId,
-          type,
-          payload,
-          roomId: this.currentRoomId,
-          senderUid: this.uid,
-          senderName: this.nickname,
-          timestamp: Date.now()
-        };
-
-        if (this.localBroadcast) {
-          try {
-            this.localBroadcast.postMessage({ type: "game_event", event: eventPacket });
-          } catch (e) {}
-        }
-
-        if (this.mqttClient && this.mqttClient.connected) {
-          this.mqttClient.publish(`${CLOUD_TOPIC_PREFIX}/rooms/${this.currentRoomId}/events`, eventPacket, false);
-        }
-
-        if (this.firebaseConnected && this.db) {
-          update(ref(this.db, `rooms/${this.currentRoomId}/events`), { latest: eventPacket }).catch(() => {});
-        }
-
-        if (type !== "peer_hello") {
-          this.syncWorldState();
-        }
-      },
-
-      handleIncomingEventPacket(ev) {
-        if (!ev || !ev.id || ev.senderUid === this.uid) return;
-        if (this.processedEvents.has(ev.id)) return;
-        this.processedEvents.add(ev.id);
-        this.handleGameEvent(ev.type, ev.payload || {}, ev.senderName || "Напарник");
-      },
-
-      handleGameEvent(type, payload = {}, senderName = "Напарник") {
-        const g = window.__backroomsGame;
-        if (!g) return;
-
-        if (type === "peer_hello") {
-          this.pushPlayerState(true);
-          if (this.isHost()) {
-            this.syncWorldState();
-            this.broadcastHostMonsters();
-          }
-          return;
-        }
-
-        if (type === "match_start") {
-          const targetLvl = Number(payload.level ?? 0);
-          if (g.getCurrentLevel() !== targetLvl) {
-            g.loadLevel(targetLvl);
-            if (g.applySafeSpawnOffset) g.applySafeSpawnOffset(this.uid);
-          }
-          if (g.isMenuOpen()) {
-            g.startGameSession(false, `ОНЛАЙН КО-ОП: ${this.currentRoomId}`);
-          }
-          this.pushPlayerState(true);
-          return;
-        }
-
-        const lvl = typeof payload.level === "number" ? payload.level : g.getCurrentLevel();
-        const fb = g.levelFuseBoxes[lvl];
-        const elev = g.levelElevators[lvl];
-
-        switch (type) {
-          case "fuse_collected": {
-            const idx = payload.fuseIdx;
-            if (typeof idx === "number" && g.worldLooseFuses[idx] && !g.worldLooseFuses[idx].collected) {
-              g.worldLooseFuses[idx].collected = true;
-              g.worldLooseFuses[idx].holder.visible = false;
-              g.showCharacterThought(`«${senderName} нашёл предохранитель ПН2-63А!»`, 3000);
-            }
-            break;
-          }
-          case "fuse_inserted": {
-            if (fb) {
-              const sIdx = typeof payload.slotIdx === "number" ? payload.slotIdx : 0;
-              const slot = fb.slots[sIdx];
-              if (slot && !slot.installed) {
-                slot.installed = true;
-                slot.ledMat.color.setHex(0x22c55e);
-                if (!slot.installedMesh) {
-                  slot.installedMesh = g.createDetailedFuseMesh();
-                  slot.anchor.add(slot.installedMesh);
-                }
-              }
-              g.refreshInventoryUI();
-              g.showCharacterThought(`«${senderName} установил предохранитель в щиток ЩРН-4 (${payload.installedTotal || 1}/4).»`, 3200);
-            }
-            break;
-          }
-          case "power_on": {
-            if (fb) {
-              fb.slots.forEach((s) => {
-                if (!s.installed) {
-                  s.installed = true;
-                  s.ledMat.color.setHex(0x22c55e);
-                  if (!s.installedMesh) {
-                    s.installedMesh = g.createDetailedFuseMesh();
-                    s.anchor.add(s.installedMesh);
-                  }
-                }
-              });
-            }
-            g.refreshInventoryUI();
-            g.showCharacterThought(`«${senderName} подал питание 380В на грузовой лифт!»`, 3600);
-            break;
-          }
-          case "elevator_called":
-          case "elevator_open": {
-            if (elev) {
-              elev.doorsOpen = true;
-              elev.openTarget = 1;
-              if (g.sound) g.sound.playMechanismSound("elevator_ding", 0.85);
-              g.showCharacterThought(`«${senderName} открыл двери грузового лифта!»`, 3200);
-            }
-            break;
-          }
-          case "elevator_close": {
-            if (elev) {
-              elev.doorsOpen = false;
-              elev.openTarget = 0;
-            }
-            break;
-          }
-          case "l1_hermetic_open": {
-            if (g.l1HermeticDoorInst) {
-              g.l1HermeticDoorInst.commandFullOpen();
-              g.showCharacterThought(`«${senderName} открывает гермозатвор ГД-800 на Уровне 1!»`, 3500);
-            }
-            break;
-          }
-          case "l1_to_l2_transition": {
-            g.showCharacterThought(`«${senderName} прошёл через гермозатвор на Уровень 2: Pipe Dreams!»`, 3600);
-            break;
-          }
-          case "l2_valve_turn": {
-            if (g.valveSystem && payload.valveKey && typeof payload.angleDeg === "number") {
-              const vInst = g.valveSystem.instances[payload.valveKey];
-              if (vInst) {
-                vInst.setAngleDeg(payload.angleDeg, true, false);
-              }
-              g.showCharacterThought(`«${senderName} повернул клапан [${payload.valveKey}] на ${payload.angleDeg}°.»`, 2800);
-            }
-            break;
-          }
-          case "l2_terminal_solved": {
-            if (g.gameState && payload.sector && g.gameState.terminals[payload.sector]) {
-              const tSt = g.gameState.terminals[payload.sector];
-              tSt.codeVerified = Boolean(payload.codeVerified);
-              tSt.userInput = String(payload.userInput || tSt.expectedAnswer);
-              tSt.solved = Boolean(payload.solved);
-              tSt.statusState = tSt.solved ? "SOLVED" : "READY";
-              if (g.terminalSystem?.instances[payload.sector]) {
-                g.terminalSystem.instances[payload.sector].renderScreenSurface(performance.now() * 0.001);
-              }
-              if (g.clockSystem?.instances[payload.sector]) {
-                g.clockSystem.instances[payload.sector].render();
-              }
-              if (g.evaluateLevel2Progress) g.evaluateLevel2Progress();
-              g.showCharacterThought(`«${senderName} решил задачу на Терминале [${payload.sector}] (угол ${tSt.expectedAnswer}°)!»`, 3500);
-            }
-            break;
-          }
-          case "l2_door_toggle": {
-            if (g.doorSystem && payload.doorKey && g.doorSystem.instances[payload.doorKey]) {
-              if (payload.targetMode === "OPEN") g.doorSystem.instances[payload.doorKey].commandFullOpen();
-              else g.doorSystem.instances[payload.doorKey].commandFullClose();
-            }
-            break;
-          }
-          case "level_change": {
-            if (typeof payload.level === "number") {
-              g.showCharacterThought(`«${senderName} перешёл на Уровень ${payload.level}.»`, 3000);
-            }
-            break;
-          }
-          case "door_open": {
-            if (payload.target === "fusebox" && fb) {
-              fb.doorTargetDeg = payload.angle || 108;
-            } else if (payload.target === "crate" && typeof payload.crateIdx === "number") {
-              const cr = g.l1Crates[payload.crateIdx];
-              if (cr && !cr.isOpen) {
-                cr.isOpen = true;
-                cr.lidTargetRad = -Math.PI * 0.58;
-              }
-            }
-            break;
-          }
-          case "door_close": {
-            if (payload.target === "fusebox" && fb) {
-              fb.doorTargetDeg = 0;
-            } else if (payload.target === "crate_looted" && typeof payload.crateIdx === "number") {
-              const cr = g.l1Crates[payload.crateIdx];
-              if (cr) {
-                cr.isOpen = true;
-                cr.isLooted = true;
-                if (cr.itemMesh) cr.itemMesh.visible = false;
-              }
-            }
-            break;
-          }
-        }
-      },
-
-      syncWorldState() {
-        if (!this.currentRoomId) return;
-        const worldPayload = this.buildInitialWorldPayload();
-        LocalStore.upsertRoom(this.currentRoomId, { world: worldPayload });
-
-        if (this.localBroadcast) {
-          try {
-            this.localBroadcast.postMessage({
-              type: "world_sync",
-              roomId: this.currentRoomId,
-              data: worldPayload
-            });
-          } catch (e) {}
-        }
-
-        if (this.mqttClient && this.mqttClient.connected) {
-          this.mqttClient.publish(`${CLOUD_TOPIC_PREFIX}/rooms/${this.currentRoomId}/world`, worldPayload, false);
-        }
-
-        if (this.firebaseConnected && this.db) {
-          update(ref(this.db, `rooms/${this.currentRoomId}/world`), worldPayload).catch(() => {});
-        }
-      },
-
-      applyWorldSnapshot(wData) {
-        const g = window.__backroomsGame;
-        if (!g || !wData) return;
-
-        if (Array.isArray(wData.looseFuses)) {
-          wData.looseFuses.forEach((collectedFlag, idx) => {
-            if (collectedFlag && g.worldLooseFuses[idx] && !g.worldLooseFuses[idx].collected) {
-              g.worldLooseFuses[idx].collected = true;
-              g.worldLooseFuses[idx].holder.visible = false;
-            }
-          });
-        }
-
-        [0, 1].forEach((lvl) => {
-          const fb = g.levelFuseBoxes[lvl];
-          const instCount = Number(wData[`fusesInstalledL${lvl}`] || 0);
-          if (fb && instCount > 0) {
-            for (let s = 0; s < Math.min(4, instCount); s++) {
-              const slot = fb.slots[s];
-              if (slot && !slot.installed) {
-                slot.installed = true;
-                slot.ledMat.color.setHex(0x22c55e);
-                if (!slot.installedMesh) {
-                  slot.installedMesh = g.createDetailedFuseMesh();
-                  slot.anchor.add(slot.installedMesh);
-                }
-              }
-            }
-          }
-          if (fb && typeof wData[`doorTargetL${lvl}`] === "number") {
-            fb.doorTargetDeg = wData[`doorTargetL${lvl}`];
-          }
-          const elev = g.levelElevators[lvl];
-          if (elev && typeof wData[`elevOpenL${lvl}`] === "boolean") {
-            elev.doorsOpen = wData[`elevOpenL${lvl}`];
-            elev.openTarget = elev.doorsOpen ? 1 : 0;
-          }
-        });
-
-        if (Array.isArray(wData.cratesL1)) {
-          wData.cratesL1.forEach((cState, idx) => {
-            const cr = g.l1Crates[idx];
-            if (!cr || !cState) return;
-            if (cState.o && !cr.isOpen) {
-              cr.isOpen = true;
-              cr.lidTargetRad = -Math.PI * 0.58;
-            }
-            if (cState.l && !cr.isLooted) {
-              cr.isLooted = true;
-              if (cr.itemMesh) cr.itemMesh.visible = false;
-            }
-          });
-        }
-
-        if (wData.l1HermeticOpen && g.l1HermeticDoorInst && g.gameState?.doors?.l1_hermetic?.targetMode !== "OPEN") {
-          g.l1HermeticDoorInst.commandFullOpen();
-        }
-        if (wData.l2Terminals && g.gameState) {
-          ["B", "C", "G"].forEach((sec) => {
-            const remT = wData.l2Terminals[sec];
-            const locT = g.gameState.terminals[sec];
-            if (remT && locT) {
-              if (typeof remT.ans === "number") {
-                locT.expectedAnswer = remT.ans;
-                g.gameState.valves[sec].targetAngleDeg = remT.ans;
-              }
-              if (remT.eq) locT.equation = remT.eq;
-              if (remT.cv) {
-                locT.codeVerified = true;
-                locT.userInput = String(locT.expectedAnswer);
-              }
-              if (remT.s) {
-                locT.solved = true;
-                locT.statusState = "SOLVED";
-              }
-              if (g.terminalSystem?.instances[sec]) g.terminalSystem.instances[sec].renderScreenSurface(0);
-              if (g.clockSystem?.instances[sec]) g.clockSystem.instances[sec].render();
-            }
-          });
-        }
-        if (wData.l2Valves && g.valveSystem) {
-          ["SPAWN", "B", "C", "G"].forEach((vk) => {
-            if (typeof wData.l2Valves[vk] === "number" && g.valveSystem.instances[vk]) {
-              const cur = g.gameState.valves[vk].angleDeg;
-              if (cur !== wData.l2Valves[vk]) {
-                g.valveSystem.instances[vk].setAngleDeg(wData.l2Valves[vk], false, false);
-              }
-            }
-          });
-        }
-        if (wData.l2Doors && g.doorSystem) {
-          ["entrance", "exit"].forEach((dk) => {
-            if (wData.l2Doors[dk] === "OPEN" && g.gameState.doors[dk].targetMode !== "OPEN") {
-              g.doorSystem.instances[dk]?.commandFullOpen();
-            }
-          });
-        }
-        if (g.evaluateLevel2Progress) g.evaluateLevel2Progress();
-        g.refreshInventoryUI();
-      },
-
-      // =========================================================================
-      // ИНТЕРФЕЙС МЕНЮ И СПИСКА КОМНАТ (СОХРАНЁН ДИЗАЙН И ЭЛТ-МОНИТОР ФАЙЛА №1)
-      // =========================================================================
-      getLivePlayersInRoomRecord(roomRecord) {
-        if (!roomRecord) return [];
-        const now = Date.now();
-        if (roomRecord.players && typeof roomRecord.players === "object") {
-          const list = Object.values(roomRecord.players).filter((p) => {
-            if (!p || p.online === false) return false;
-            const age = now - Number(p.lastSeen || p.timestamp || p.updatedAt || 0);
-            return age <= PLAYER_TIMEOUT_MS * 1.5;
-          });
-          if (list.length > 0) return list;
-        }
-        if (roomRecord.meta && !roomRecord.meta.deleted && (now - Number(roomRecord.meta.updatedAt || 0) < 120000)) {
-          return [{ uid: roomRecord.meta.hostUid || "host", nickname: roomRecord.meta.hostName || "Stalker" }];
-        }
-        return [];
-      },
-
-      refreshRoomListUI() {
-        const container = document.getElementById("firebaseRoomsList");
-        if (!container) return;
-
-        const now = Date.now();
-        const mergedRooms = Object.assign({}, LocalStore.getAllRooms(), this.activeRoomsCache || {});
-        const validRooms = [];
-
-        Object.keys(mergedRooms).forEach((code) => {
-          const r = mergedRooms[code];
-          const meta = r && (r.meta || (r.code ? r : null));
-          if (!meta || meta.deleted) return;
-          const livePlayers = this.getLivePlayersInRoomRecord(r);
-          const metaAge = now - Number(meta.updatedAt || meta.createdAt || 0);
-          if (livePlayers.length > 0 && metaAge <= 180000) {
-            validRooms.push({
-              code: meta.code || code,
-              hostName: meta.hostName || "Stalker",
-              playerCount: Math.max(livePlayers.length, Number(meta.playerCount || 1)),
-              maxPlayers: Number(meta.maxPlayers || MAX_ROOM_PLAYERS),
-              state: meta.state === "playing" ? "PLAYING" : "LOBBY",
-              level: Number(meta.level || 0)
-            });
-          }
-        });
-
-        if (validRooms.length === 0) {
-          container.innerHTML = `
-            <div class="crt-box flex items-center justify-between">
-              <div>
-                <div class="font-bold text-white">АКТИВНЫХ КОМНАТ НЕ НАЙДЕНО</div>
-                <div class="text-[11px] text-blue-200/75">Нажмите [ СОЗДАТЬ КОМНАТУ ], чтобы открыть новое лобби BR-XXXX</div>
-              </div>
-            </div>
-          `;
-          return;
-        }
-
-        container.innerHTML = validRooms
-          .map(
-            (rm) => `
-            <div class="crt-box flex items-center justify-between gap-2">
-              <div>
-                <div class="font-bold text-yellow-200">${rm.code} • HOST: ${rm.hostName}</div>
-                <div class="text-[11px] text-blue-200/80">Игроки: ${rm.playerCount}/${rm.maxPlayers} • Статус: ${rm.state} • Уровень ${rm.level}</div>
-              </div>
-              <button type="button" data-join-code="${rm.code}" class="px-2.5 py-1 bg-[#fef08a] text-[#05168b] font-bold text-xs hover:bg-white">
-                ПОДКЛЮЧИТЬСЯ
-              </button>
-            </div>
-          `
-          )
-          .join("");
-
-        container.querySelectorAll("[data-join-code]").forEach((btn) => {
-          btn.addEventListener("click", () => {
-            const code = btn.getAttribute("data-join-code");
-            const nameInput = document.getElementById("inputJoinPlayerName")?.value || this.nickname;
-            this.joinRoomByCode(code, nameInput);
-          });
-        });
-      },
-
-      updateOnlineHudBadge() {
-        const badge = document.getElementById("hudOnlineBadge");
-        const txt = document.getElementById("hudOnlineText");
-        if (!badge || !txt) return;
-
-        if (!this.currentRoomId) {
-          badge.classList.add("hidden");
-          badge.classList.remove("flex");
-        } else {
-          badge.classList.remove("hidden");
-          badge.classList.add("flex");
-          const isOnline = (this.connectionStatus !== "OFFLINE") && (typeof navigator === "undefined" || navigator.onLine !== false);
-          const statusIcon = isOnline ? "🟢" : "🔴";
-          const totalPlayers = Math.max(1, 1 + this.remotePlayers.size);
-          const pingPart = this.pingMs ? ` • ${this.pingMs}ms` : "";
-          txt.textContent = `${statusIcon} ${this.currentRoomId} (${totalPlayers}/${MAX_ROOM_PLAYERS})${pingPart}`;
-        }
-      },
-
-      updateMenuUI() {
-        const isOnline = (this.connectionStatus !== "OFFLINE") && (typeof navigator === "undefined" || navigator.onLine !== false);
-        const statusBadgeText = isOnline ? "🟢 ONLINE" : "🔴 OFFLINE";
-        const fbStatusJoin = document.getElementById("fbConnectionStatus");
-        const lobbyStatus = document.getElementById("lobbyOnlineStatusText");
-        const pingLabel = document.getElementById("onlinePingJoinLabel");
-
-        [fbStatusJoin, lobbyStatus].forEach((el) => {
-          if (!el) return;
-          el.textContent = isOnline ? `${statusBadgeText} (${this.pingMs || 32} ms)` : statusBadgeText;
-          el.className = isOnline ? "font-bold text-emerald-300" : "font-bold text-red-400";
-        });
-
-        if (pingLabel) {
-          pingLabel.textContent = isOnline ? `PING: ${this.pingMs || 32} ms` : "PING: --";
-        }
-
-        const countEl = document.getElementById("lobbyPlayerCountText");
-        const codeEl = document.getElementById("lobbyCodeDisplay");
-        const hostEl = document.getElementById("lobbyHostNameText");
-        const stateEl = document.getElementById("lobbyRoomStateBadge");
-        const listContainer = document.getElementById("lobbyPlayersListContainer");
-        const startBtnLabel = document.getElementById("btnStartCoopLobbyLabel");
-        const startBtnHint = document.getElementById("btnStartCoopLobbyHint");
-
-        if (!this.currentRoomId) {
-          if (countEl) countEl.textContent = `0/${MAX_ROOM_PLAYERS}`;
-          if (codeEl) codeEl.textContent = "НЕ СОЗДАНА";
-          if (hostEl) hostEl.textContent = "—";
-          if (stateEl) stateEl.textContent = "СТАТУС: ВНЕ КОМНАТЫ";
-          if (startBtnLabel) startBtnLabel.textContent = "[ СОЗДАТЬ КОМНАТУ И НАЧАТЬ ] >";
-          if (startBtnHint) startBtnHint.textContent = "[НОВАЯ СЕССИЯ]";
-          if (listContainer) {
-            listContainer.innerHTML = `<div class="text-blue-200/65 text-[11px]">Нажмите [ СОЗДАТЬ КОМНАТУ ] или [ ПОДКЛЮЧИТЬСЯ ], чтобы войти в онлайн.</div>`;
-          }
-          return;
-        }
-
-        const members = [];
-        const myLevel = window.__backroomsGame ? window.__backroomsGame.getCurrentLevel() : 0;
-        const hostUid = this.roomMeta?.hostUid || (this.isHost() ? this.uid : "");
-
-        members.push({
-          uid: this.uid,
-          nickname: this.nickname,
-          level: myLevel,
-          isHost: this.isHost() || hostUid === this.uid,
-          isMe: true
-        });
-
-        this.remotePlayers.forEach((rp, rUid) => {
-          if (rUid !== this.uid) {
-            members.push({
-              uid: rUid,
-              nickname: rp.nickname,
-              level: rp.level,
-              isHost: hostUid === rUid,
-              isMe: false
-            });
-          }
-        });
-
-        const maxPlayers = Number(this.roomMeta?.maxPlayers || MAX_ROOM_PLAYERS);
-        if (countEl) countEl.textContent = `${members.length}/${maxPlayers}`;
-        if (codeEl) codeEl.textContent = this.currentRoomId;
-        const hostMember = members.find((m) => m.isHost) || members[0];
-        if (hostEl) hostEl.textContent = hostMember ? hostMember.nickname : this.nickname;
-        if (stateEl) {
-          const st = this.roomMeta?.state === "playing" ? "ИГРА ИДЕТ (PLAYING)" : "ОЖИДАНИЕ В ЛОББИ (LOBBY)";
-          stateEl.textContent = `${st} • УРОВЕНЬ ${Number(this.roomMeta?.level ?? myLevel)}`;
-        }
-
-        if (startBtnLabel && startBtnHint) {
-          if (this.isHost()) {
-            startBtnLabel.textContent = "[ НАЧАТЬ ИГРУ ] >";
-            startBtnHint.textContent = "[ВЫ — HOST]";
-          } else if (this.roomMeta?.state === "playing") {
-            startBtnLabel.textContent = "[ ВОЙТИ В ИДУЩУЮ ИГРУ ] >";
-            startBtnHint.textContent = "[PLAYING]";
-          } else {
-            startBtnLabel.textContent = "[ ВОЙТИ В КОРИДОР (ОЖИДАНИЕ HOST) ] >";
-            startBtnHint.textContent = "[КЛИЕНТ]";
-          }
-        }
-
-        if (listContainer) {
-          listContainer.innerHTML = members
-            .map((m) => {
-              const roleBadge = m.isHost ? " — <strong class='text-yellow-300'>HOST</strong>" : "";
-              const meBadge = m.isMe ? " <span class='text-blue-200/75'>(ВЫ)</span>" : "";
-              const lvlBadge = `<span class='text-[10px] text-blue-200/65 ml-1'>[LVL ${Number(m.level || 0)}]</span>`;
-              return `<div class="flex items-center justify-between py-0.5 border-b border-blue-200/15">
-                <span>🟢 ${m.nickname}${roleBadge}${meBadge}</span>
-                ${lvlBadge}
-              </div>`;
-            })
-            .join("");
+        this.remotePlayers.set(pUid, rp);
+      }
+
+      rp.lastUpdateMs = Date.now();
+      if (data.nickname && data.nickname !== rp.nickname) {
+        rp.nickname = data.nickname;
+        rp.nameTag.updateName(data.nickname);
+      }
+      if (typeof data.x === 'number' && typeof data.z === 'number') {
+        rp.targetPos.set(data.x, 0, data.z);
+        if (rp.currentPos.distanceTo(rp.targetPos) > 35) {
+          rp.currentPos.copy(rp.targetPos);
         }
       }
-    };
+      if (typeof data.yaw === 'number') rp.targetYaw = data.yaw + Math.PI;
+      rp.animMode = data.animMode || 'idle';
+      rp.equip = data.equip || 'vhs';
+      rp.crouch = Boolean(data.crouch);
+      rp.level = typeof data.level === 'number' ? data.level : 0;
+      rp.spot.intensity = data.flashlight ? 2.2 : 0;
+    },
 
-    window.BackroomsOnlineManager = BackroomsOnlineManager;
-    BackroomsOnlineManager.init();
+    updateRemotePlayersRender(dt) {
+      this.remotePlayers.forEach((rp) => {
+        rp.rig.root.visible = (rp.level === currentLevel);
+        if (!rp.rig.root.visible) return;
+
+        rp.currentPos.lerp(rp.targetPos, Math.min(1, dt * 14));
+        rp.rig.root.position.copy(rp.currentPos);
+
+        let dYaw = rp.targetYaw - rp.currentYaw;
+        while (dYaw > Math.PI) dYaw -= Math.PI * 2;
+        while (dYaw < -Math.PI) dYaw += Math.PI * 2;
+        rp.currentYaw += dYaw * Math.min(1, dt * 16);
+        rp.rig.root.rotation.y = rp.currentYaw;
+
+        animateExplorerRig(rp.rig, rp.animMode, dt, rp.equip);
+        if (rp.crouch) rp.rig.pelvis.position.y -= 0.32;
+      });
+    },
+
+    removeRemotePlayer(pUid) {
+      const rp = this.remotePlayers.get(pUid);
+      if (rp) {
+        scene.remove(rp.rig.root);
+        this.remotePlayers.delete(pUid);
+      }
+    },
+
+    clearRemotePlayers() {
+      this.remotePlayers.forEach(rp => scene.remove(rp.rig.root));
+      this.remotePlayers.clear();
+    },
+
+    pruneStalePlayers() {
+      const now = Date.now();
+      let changed = false;
+      this.remotePlayers.forEach((rp, uid) => {
+        if (now - rp.lastUpdateMs > PLAYER_TIMEOUT_MS) {
+          this.removeRemotePlayer(uid);
+          this.roomPlayersMeta.delete(uid);
+          changed = true;
+        }
+      });
+      if (changed) {
+        this.renderLobbyUI();
+        this.updateStatusUI();
+      }
+    },
+
+    // Синхронизация Бактерии и сущностей от Хоста
+    isNonHostInActiveRoom() {
+      return Boolean(this.currentRoomId && !this.isHost && this.remotePlayers.size > 0);
+    },
+
+    pushMonstersState() {
+      const now = performance.now();
+      if (now - this.lastMonsterSyncSentMs < 110) return;
+      this.lastMonsterSyncSentMs = now;
+
+      const pkt = {
+        uid: this.uid,
+        bX: Number(bacteriaRoot.position.x.toFixed(2)),
+        bZ: Number(bacteriaRoot.position.z.toFixed(2)),
+        bRot: Number(bacteriaRoot.rotation.y.toFixed(3)),
+        bState: bacteriaState,
+        ts: Date.now()
+      };
+      this.sendNetworkPacket(`${CLOUD_TOPIC_PREFIX}/rooms/${this.currentRoomId}/monsters`, pkt, false);
+    },
+
+    applySyncedMonsters(t, dt) {
+      this.updateRemotePlayersRender(dt);
+      if (!this.syncedMonsters) return;
+      const m = this.syncedMonsters;
+      bacteriaRoot.position.x += (m.bX - bacteriaRoot.position.x) * Math.min(1, dt * 12);
+      bacteriaRoot.position.z += (m.bZ - bacteriaRoot.position.z) * Math.min(1, dt * 12);
+      bacteriaRoot.rotation.y = m.bRot || 0;
+    },
+
+    // Обновление UI ЭЛТ-монитора
+    updateStatusUI() {
+      const isOnline = this.connected && navigator.onLine;
+      const statusText = isOnline ? '🟢 ONLINE' : '🟡 CONNECTING';
+      const statusClass = isOnline ? 'font-bold text-emerald-300' : 'font-bold text-amber-300';
+
+      const fbSt = document.getElementById('fbConnectionStatus');
+      if (fbSt) { fbSt.textContent = statusText; fbSt.className = statusClass; }
+
+      const lobbySt = document.getElementById('lobbyOnlineStatusText');
+      if (lobbySt) { lobbySt.textContent = statusText; lobbySt.className = statusClass; }
+
+      const pingLabel = document.getElementById('onlinePingJoinLabel');
+      if (pingLabel) pingLabel.textContent = isOnline ? `${this.mqttClient?.rttMs || 34} ms` : '-- ms';
+
+      const hudBadge = document.getElementById('hudOnlineBadge');
+      const hudText = document.getElementById('hudOnlineText');
+      if (hudBadge && hudText) {
+        const count = 1 + this.remotePlayers.size;
+        if (this.currentRoomId) {
+          hudBadge.classList.remove('hidden');
+          hudBadge.classList.add('flex');
+          hudText.textContent = `${this.currentRoomId} (${count}/4)`;
+        } else {
+          hudBadge.classList.add('hidden');
+        }
+      }
+    },
+
+    renderRoomsList() {
+      const listEl = document.getElementById('firebaseRoomsList');
+      if (!listEl) return;
+      const activeRooms = [];
+      this.roomsCatalog.forEach((r) => {
+        if (r && !r.deleted && r.code && (Date.now() - (r.updatedAtMs || 0) < 600000)) {
+          activeRooms.push(r);
+        }
+      });
+
+      if (activeRooms.length === 0) {
+        listEl.innerHTML = `<div class="crt-box text-[11px] text-blue-200/75">Открытых комнат пока нет. Нажмите [ СОЗДАТЬ КОМНАТУ ] или введите код BR-XXXX сверху!</div>`;
+        return;
+      }
+
+      listEl.innerHTML = '';
+      activeRooms.forEach(r => {
+        const row = document.createElement('div');
+        row.className = 'crt-box flex items-center justify-between gap-2 text-xs';
+        row.innerHTML = `
+          <div>
+            <strong class="text-yellow-300">${r.code}</strong>
+            <span class="text-blue-200/80 ml-2">HOST: ${r.hostName || 'Stalker'} • УР. ${r.level || 0} • ${r.playerCount || 1}/4</span>
+          </div>
+          <button type="button" class="px-2 py-0.5 bg-[#fef08a] text-[#05168b] font-bold text-[11px] hover:bg-white">[ ВОЙТИ ]</button>
+        `;
+        row.querySelector('button').addEventListener('click', () => this.joinRoomByCode(r.code));
+        listEl.appendChild(row);
+      });
+    },
+
+    renderLobbyUI() {
+      const countEl = document.getElementById('lobbyPlayerCountText');
+      const codeEl = document.getElementById('lobbyCodeDisplay');
+      const hostEl = document.getElementById('lobbyHostNameText');
+      const badgeEl = document.getElementById('lobbyRoomStateBadge');
+      const listEl = document.getElementById('lobbyPlayersListContainer');
+      const lvlBtn = document.getElementById('btnToggleLobbyLevel');
+      const startLabel = document.getElementById('btnStartCoopLobbyLabel');
+
+      if (lvlBtn) lvlBtn.textContent = `УРОВЕНЬ ${this.lobbyLevel}`;
+
+      if (!this.currentRoomId) {
+        if (countEl) countEl.textContent = '0/4';
+        if (codeEl) codeEl.textContent = 'НЕ СОЗДАНА';
+        if (hostEl) hostEl.textContent = '—';
+        if (badgeEl) badgeEl.textContent = 'СТАТУС: ОЖИДАНИЕ';
+        if (listEl) listEl.innerHTML = `<div class="text-blue-200/65 text-[11px]">Вы пока не находитесь в комнате. Нажмите [ СОЗДАТЬ КОМНАТУ ] или [ ПОДКЛЮЧИТЬСЯ ].</div>`;
+        return;
+      }
+
+      const players = Array.from(this.roomPlayersMeta.values());
+      if (countEl) countEl.textContent = `${players.length}/${MAX_ROOM_PLAYERS}`;
+      if (codeEl) codeEl.textContent = this.currentRoomId;
+      if (hostEl) hostEl.textContent = this.hostName;
+      if (badgeEl) badgeEl.textContent = this.roomState === 'playing' ? 'СТАТУС: В ИГРЕ' : 'СТАТУС: В ЛОББИ';
+      if (startLabel) {
+        startLabel.textContent = this.isHost
+          ? `[ НАЧАТЬ ИГРУ (УРОВЕНЬ ${this.lobbyLevel}) ] >`
+          : (this.roomState === 'playing' ? '[ ВОЙТИ В МАТЧ ] >' : '[ ОЖИДАНИЕ ХОСТА... ]');
+      }
+
+      if (listEl) {
+        listEl.innerHTML = players.map((p, i) => `
+          <div class="flex items-center justify-between py-0.5 border-b border-blue-200/15">
+            <span>${i + 1}. 🟢 <strong>${p.nickname}</strong> ${p.uid === this.uid ? '(Вы)' : ''}</span>
+            <span class="text-[10px] px-1.5 bg-blue-900/80 text-yellow-300">${p.isHost ? 'HOST' : 'ИГРОК'}</span>
+          </div>
+        `).join('');
+      }
+    },
+
+    showJoinError(msg) {
+      const box = document.getElementById('onlineJoinErrorBox');
+      if (box) { box.textContent = msg; box.classList.remove('hidden'); }
+    },
+    showLobbyError(msg) {
+      const box = document.getElementById('lobbyErrorBanner');
+      if (box) { box.textContent = msg; box.classList.remove('hidden'); }
+    },
+    hideErrors() {
+      document.getElementById('onlineJoinErrorBox')?.classList.add('hidden');
+      document.getElementById('lobbyErrorBanner')?.classList.add('hidden');
+    },
+
+    bindMenuButtons() {
+      document.getElementById('btnCreateRoomAction')?.addEventListener('click', () => this.createRoom());
+      document.getElementById('btnJoinByCode')?.addEventListener('click', () => {
+        const code = document.getElementById('inputJoinRoomCode')?.value;
+        this.joinRoomByCode(code);
+      });
+      document.getElementById('inputJoinRoomCode')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') this.joinRoomByCode(e.target.value);
+      });
+      document.getElementById('btnRefreshRoomsList')?.addEventListener('click', () => this.renderRoomsList());
+      document.getElementById('btnLeaveRoomAction')?.addEventListener('click', () => this.leaveRoom());
+      document.getElementById('btnCopyRoomCode')?.addEventListener('click', () => {
+        if (this.currentRoomId && navigator.clipboard) {
+          navigator.clipboard.writeText(this.currentRoomId).catch(() => {});
+        }
+      });
+      document.getElementById('btnToggleLobbyLevel')?.addEventListener('click', () => {
+        if (this.currentRoomId && !this.isHost) return;
+        this.lobbyLevel = (this.lobbyLevel + 1) % 3;
+        this.publishRoomMeta();
+        this.renderLobbyUI();
+      });
+      document.getElementById('btnStartCoopLobby')?.addEventListener('click', () => this.startMatchFromLobby());
+    }
+  };
+
+  window.BackroomsOnlineManager = BackroomsOnlineManager;
+  BackroomsOnlineManager.init();
+
+  // Хук в основной игровой цикл для плавной интерполяции 3D-моделей союзников также и у ХОСТА
+  const origUpdateBacteria = window.updateBacteriaAnimationAndAI;
+  if (typeof origUpdateBacteria === 'function') {
+    window.updateBacteriaAnimationAndAI = function(t, dt, pPos) {
+      BackroomsOnlineManager.updateRemotePlayersRender(dt);
+      return origUpdateBacteria(t, dt, pPos);
+    };
+  }
+})();
   </script>
 
 </body>
